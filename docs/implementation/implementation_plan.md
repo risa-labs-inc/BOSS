@@ -1,5 +1,7 @@
 # BOSS Implementation Plan
 
+**⚠️ DEPRECATED: This document is maintained for historical reference only. Please use the [Unified Development Tracker](./unified_development_tracker.md) for current implementation status.**
+
 This document outlines the step-by-step implementation plan for the BOSS (Business Operating System As A Service) project.
 
 ## Phase 1: Foundation

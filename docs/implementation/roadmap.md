@@ -1,5 +1,7 @@
 # BOSS Implementation Roadmap
 
+**⚠️ DEPRECATED: This document is maintained for historical reference only. Please use the [Unified Development Tracker](./unified_development_tracker.md) for current implementation status.**
+
 This document provides a visual roadmap of the BOSS implementation plan, highlighting dependencies, critical path components, and estimated timelines.
 
 ## Implementation Timeline
