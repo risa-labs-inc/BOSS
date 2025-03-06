@@ -86,3 +86,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Example generated files
+example.db
+file_ops_example/
