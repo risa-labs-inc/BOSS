@@ -1,0 +1,11 @@
+# Copy and paste these lines into your Cursor terminal for quick setup
+# ---------------------------------------------------------------------
+source scripts/poetry_functions.sh
+alias pl='poetry_latest'
+alias pld='poetry_latest_dev'
+alias plg='poetry_latest_group'
+# ---------------------------------------------------------------------
+# Now you can use:
+#   pl   - Install all dependencies with latest versions
+#   pld  - Install dev dependencies with latest versions
+#   plg viz - Install viz group dependencies with latest versions 

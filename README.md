@@ -92,6 +92,7 @@ BOSS integrates with multiple LLM providers:
 - OpenAI (GPT models)
 - Anthropic (Claude models)
 - Together AI (various models)
+- xAI (Grok models)
 
 ## TaskResolver Types To Implement
 
@@ -99,6 +100,7 @@ BOSS integrates with multiple LLM providers:
    - [ ] OpenAI GPT Resolver
    - [ ] Anthropic Claude Resolver
    - [ ] Together AI Resolver
+   - [ ] xAI Grok Resolver
 
 2. **Registry TaskResolvers**
    - [ ] TaskResolver Registry Manager

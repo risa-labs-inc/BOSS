@@ -27,6 +27,7 @@ This document outlines the step-by-step implementation plan for the BOSS (Busine
 - [ ] Create OpenAI TaskResolver
 - [ ] Create Anthropic TaskResolver
 - [ ] Create Together AI TaskResolver
+- [ ] Create xAI TaskResolver
 - [ ] Implement LLMTaskResolverFactory
 - [ ] Write tests for LLM TaskResolvers
 - [ ] Set up retry counts and evolution thresholds for each LLM TaskResolver

@@ -1,0 +1,1 @@
+{"commands": [{"name": "Poetry: Install Latest", "command": "./scripts/poetry_latest.sh", "showOutput": true}, {"name": "Poetry: Install Latest Dev", "command": "./scripts/poetry_latest.sh --with-dev", "showOutput": true}]}

@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "boss-py-agent"
+name = "boss"
 version = "0.2.0"
-description = "BOSS Python Agent - A self-evolving implementation generator powered by Claude API"
+description = "BOSS - Business Operating System As A Service"
 authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
 license = "MIT"
-packages = [{include = "boss_py_agent"}]
+packages = [{include = "boss"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
@@ -26,7 +26,7 @@ rich = "^13.3.5"
 jsonschema = "^4.17.3"
 
 [tool.poetry.scripts]
-boss = "boss_py_agent:main"
+boss = "boss:main"
 
 [build-system]
 requires = ["poetry-core"]
@@ -49,4 +49,4 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_functions = "test_*"
 python_classes = "Test*"
-addopts = "--cov=boss_py_agent --cov-report=term-missing"
+addopts = "--cov=boss --cov-report=term-missing"

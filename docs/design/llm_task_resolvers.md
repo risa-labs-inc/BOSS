@@ -8,9 +8,10 @@ LLM-based TaskResolvers are specialized TaskResolvers that use Large Language Mo
 
 The BOSS system integrates with multiple LLM providers:
 
-1. **OpenAI** - GPT models (GPT-4, GPT-3.5-Turbo)
+1. **OpenAI** - GPT models (GPT-4o, GPT-4 Turbo, GPT-3.5-Turbo)
 2. **Anthropic** - Claude models (Claude 3 Opus, Claude 3 Sonnet, Claude 3 Haiku)
-3. **Together AI** - Various models including open-source models
+3. **Together AI** - Various models including Llama-3, Mistral, and other open-source models
+4. **xAI** - Grok models (Grok-1.5, Grok-2)
 
 ## Base LLM TaskResolver
 
@@ -30,17 +31,29 @@ class BaseLLMTaskResolver(TaskResolver):
     input_schema = {
         "type": "object",
         "properties": {
-            "prompt": {"type": "string"},
+            "messages": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "role": {"type": "string", "enum": ["system", "user", "assistant"]},
+                        "content": {"type": "string"}
+                    },
+                    "required": ["role", "content"]
+                }
+            },
             "parameters": {
                 "type": "object",
                 "properties": {
                     "temperature": {"type": "number", "minimum": 0, "maximum": 2},
                     "max_tokens": {"type": "integer", "minimum": 1},
-                    "model": {"type": "string"}
+                    "model": {"type": "string"},
+                    "response_format": {"type": "object"},
+                    "tools": {"type": "array"}
                 }
             }
         },
-        "required": ["prompt"]
+        "required": ["messages"]
     }
     
     result_schema = {
@@ -55,7 +68,8 @@ class BaseLLMTaskResolver(TaskResolver):
                     "completion_tokens": {"type": "integer"},
                     "total_tokens": {"type": "integer"}
                 }
-            }
+            },
+            "tool_calls": {"type": "array"}
         }
     }
     
@@ -69,9 +83,9 @@ class BaseLLMTaskResolver(TaskResolver):
     }
     
     @abstractmethod
-    async def generate_text(self, prompt: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    async def generate_completion(self, messages: List[Dict[str, Any]], parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Generate text from the LLM based on the prompt and parameters.
+        Generate a completion from the LLM based on the messages and parameters.
         Returns a dict with response, model_used, and usage information.
         """
         pass
@@ -83,10 +97,10 @@ class BaseLLMTaskResolver(TaskResolver):
         task.status = TaskStatus.IN_PROGRESS
         
         try:
-            prompt = task.input_data["prompt"]
+            messages = task.input_data["messages"]
             parameters = task.input_data.get("parameters", {})
             
-            result = await self.generate_text(prompt, parameters)
+            result = await self.generate_completion(messages, parameters)
             
             task.result = TaskResult(data=result)
             task.status = TaskStatus.COMPLETED
@@ -107,13 +121,13 @@ class BaseLLMTaskResolver(TaskResolver):
 ```python
 class OpenAITaskResolver(BaseLLMTaskResolver):
     """
-    TaskResolver for OpenAI models (GPT-4, GPT-3.5-Turbo).
+    TaskResolver for OpenAI models.
     """
     name = "OpenAIResolver"
     description = "Resolver for OpenAI GPT models"
     version = "1.0.0"
     
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, organization: str = None):
         """
         Initialize the OpenAI client.
         If api_key is not provided, it will be loaded from environment variables.
@@ -124,33 +138,73 @@ class OpenAITaskResolver(BaseLLMTaskResolver):
         if not self.api_key:
             raise ValueError("OpenAI API key not provided and not found in environment variables")
             
-        self.client = OpenAI(api_key=self.api_key)
+        client_args = {"api_key": self.api_key}
+        if organization:
+            client_args["organization"] = organization
+            
+        self.client = OpenAI(**client_args)
     
-    async def generate_text(self, prompt: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    async def generate_completion(self, messages: List[Dict[str, Any]], parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Generate text using OpenAI models.
+        Generate completions using OpenAI models.
         """
-        model = parameters.get("model", "gpt-3.5-turbo")
+        model = parameters.get("model", "gpt-4o")
         temperature = parameters.get("temperature", 0.7)
         max_tokens = parameters.get("max_tokens", 1000)
+        response_format = parameters.get("response_format")
+        tools = parameters.get("tools")
         
-        response = await asyncio.to_thread(
-            self.client.chat.completions.create,
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=temperature,
-            max_tokens=max_tokens
-        )
-        
-        return {
-            "response": response.choices[0].message.content,
-            "model_used": model,
-            "usage": {
-                "prompt_tokens": response.usage.prompt_tokens,
-                "completion_tokens": response.usage.completion_tokens,
-                "total_tokens": response.usage.total_tokens
-            }
+        kwargs = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens
         }
+        
+        if response_format:
+            kwargs["response_format"] = response_format
+            
+        if tools:
+            kwargs["tools"] = tools
+            
+        try:
+            response = await asyncio.to_thread(
+                self.client.chat.completions.create,
+                **kwargs
+            )
+            
+            result = {
+                "response": response.choices[0].message.content,
+                "model_used": model,
+                "usage": {
+                    "prompt_tokens": response.usage.prompt_tokens,
+                    "completion_tokens": response.usage.completion_tokens,
+                    "total_tokens": response.usage.total_tokens
+                }
+            }
+            
+            # Include tool calls if present
+            if hasattr(response.choices[0].message, "tool_calls") and response.choices[0].message.tool_calls:
+                result["tool_calls"] = [
+                    {
+                        "id": tool_call.id,
+                        "type": tool_call.type,
+                        "function": {
+                            "name": tool_call.function.name,
+                            "arguments": tool_call.function.arguments
+                        }
+                    }
+                    for tool_call in response.choices[0].message.tool_calls
+                ]
+                
+            return result
+            
+        except Exception as e:
+            raise TaskError(
+                code="openai_error",
+                message=f"Error generating completion with OpenAI: {str(e)}",
+                details={"provider": "OpenAI"}
+            )
     
     def health_check(self) -> bool:
         """
@@ -192,23 +246,43 @@ class AnthropicTaskResolver(BaseLLMTaskResolver):
             
         self.client = anthropic.Anthropic(api_key=self.api_key)
     
-    async def generate_text(self, prompt: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    async def generate_completion(self, messages: List[Dict[str, Any]], parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Generate text using Anthropic Claude models.
+        Generate completions using Anthropic Claude models.
         """
-        model = parameters.get("model", "claude-3-sonnet-20240229")
+        model = parameters.get("model", "claude-3-opus-20240229")
         temperature = parameters.get("temperature", 0.7)
         max_tokens = parameters.get("max_tokens", 1000)
+        system = None
         
+        # Extract system message if present
+        anthropic_messages = []
+        for message in messages:
+            if message["role"] == "system":
+                system = message["content"]
+            else:
+                anthropic_messages.append(message)
+        
+        kwargs = {
+            "model": model,
+            "messages": anthropic_messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens
+        }
+        
+        if system:
+            kwargs["system"] = system
+            
+        # Add tools if provided
+        if "tools" in parameters:
+            kwargs["tools"] = parameters["tools"]
+            
         response = await asyncio.to_thread(
             self.client.messages.create,
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=temperature,
-            max_tokens=max_tokens
+            **kwargs
         )
         
-        return {
+        result = {
             "response": response.content[0].text,
             "model_used": model,
             "usage": {
@@ -217,6 +291,19 @@ class AnthropicTaskResolver(BaseLLMTaskResolver):
                 "total_tokens": response.usage.input_tokens + response.usage.output_tokens
             }
         }
+        
+        # Include tool calls if present
+        if hasattr(response, "tool_use") and response.tool_use:
+            result["tool_calls"] = [
+                {
+                    "id": tool_use.id,
+                    "name": tool_use.name,
+                    "input": tool_use.input
+                }
+                for tool_use in response.tool_use
+            ]
+            
+        return result
     
     def health_check(self) -> bool:
         """
@@ -250,48 +337,54 @@ class TogetherAITaskResolver(BaseLLMTaskResolver):
         Initialize the Together AI client.
         If parameters are not provided, they will be loaded from environment variables.
         """
-        import requests
-        
         self.api_key = api_key or os.getenv("TOGETHER_API_KEY")
         if not self.api_key:
             raise ValueError("Together AI API key not provided and not found in environment variables")
             
         self.api_url = api_url or os.getenv("TOGETHER_API_URL", "https://api.together.xyz/v1")
         self.timeout = timeout or int(os.getenv("TOGETHER_API_TIMEOUT", "120"))
-        self.session = requests.Session()
-        self.session.headers.update({
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        })
+        
+        # Use httpx for async operations
+        import httpx
+        self.client = httpx.AsyncClient(
+            timeout=self.timeout,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+        )
     
-    async def generate_text(self, prompt: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    async def generate_completion(self, messages: List[Dict[str, Any]], parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Generate text using Together AI models.
+        Generate completions using Together AI models.
         """
-        model = parameters.get("model", "mistralai/Mixtral-8x7B-Instruct-v0.1")
+        model = parameters.get("model", "meta-llama/Llama-3-70b-chat")
         temperature = parameters.get("temperature", 0.7)
         max_tokens = parameters.get("max_tokens", 1000)
         
         payload = {
             "model": model,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens
         }
         
-        async def make_request():
-            response = await asyncio.to_thread(
-                self.session.post,
-                f"{self.api_url}/chat/completions",
-                json=payload,
-                timeout=self.timeout
-            )
-            response.raise_for_status()
-            return response.json()
+        # Add tools if provided
+        if "tools" in parameters:
+            payload["tools"] = parameters["tools"]
         
-        response_data = await make_request()
+        # Add response format if provided
+        if "response_format" in parameters:
+            payload["response_format"] = parameters["response_format"]
         
-        return {
+        response = await self.client.post(
+            f"{self.api_url}/chat/completions",
+            json=payload
+        )
+        response.raise_for_status()
+        response_data = response.json()
+        
+        result = {
             "response": response_data["choices"][0]["message"]["content"],
             "model_used": model,
             "usage": {
@@ -300,251 +393,163 @@ class TogetherAITaskResolver(BaseLLMTaskResolver):
                 "total_tokens": response_data["usage"]["total_tokens"]
             }
         }
+        
+        # Include tool calls if present
+        if "tool_calls" in response_data["choices"][0]["message"]:
+            result["tool_calls"] = response_data["choices"][0]["message"]["tool_calls"]
+            
+        return result
     
-    def health_check(self) -> bool:
+    async def health_check(self) -> bool:
         """
         Check if the Together AI API is accessible.
         """
         try:
             payload = {
-                "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+                "model": "meta-llama/Llama-3-8b-chat",
                 "messages": [{"role": "user", "content": "Hello, are you operational?"}],
                 "max_tokens": 5
             }
             
-            response = self.session.post(
+            response = await self.client.post(
                 f"{self.api_url}/chat/completions",
-                json=payload,
-                timeout=self.timeout
+                json=payload
             )
             response.raise_for_status()
             return response.json()["choices"][0]["message"]["content"] is not None
         except Exception:
             return False
+            
+    async def close(self):
+        """
+        Close the HTTP client when done.
+        """
+        await self.client.aclose()
 ```
 
-## Specialized LLM TaskResolvers
-
-Beyond the basic LLM TaskResolvers, we can create specialized versions for specific tasks:
-
-### CodeGenerationResolver
+## xAI Resolver
 
 ```python
-class CodeGenerationResolver(OpenAITaskResolver):
+class XAIResolver(BaseLLMTaskResolver):
     """
-    TaskResolver for generating code using OpenAI models.
+    TaskResolver for xAI's Grok models.
     """
-    name = "CodeGenerationResolver"
-    description = "Generates code based on requirements"
+    name = "XAIResolver"
+    description = "Task resolver for xAI's Grok models"
     version = "1.0.0"
+    depth = 1
+    evolution_strategy = "Evolve by improving prompts or switching to newer Grok models"
     
-    input_schema = {
-        "type": "object",
-        "properties": {
-            "language": {"type": "string"},
-            "requirements": {"type": "string"},
-            "context": {"type": "string", "optional": True},
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "temperature": {"type": "number", "minimum": 0, "maximum": 2},
-                    "model": {"type": "string"}
-                }
+    def __init__(self, api_key: str = None, model: str = "grok-2"):
+        """
+        Initialize the xAI client.
+        If api_key is not provided, it will be loaded from environment variables.
+        """
+        self.api_key = api_key or os.environ.get("XAI_API_KEY")
+        self.model = model
+        self.client = None
+        
+    def setup(self):
+        """
+        Initialize the xAI client.
+        """
+        if not self.api_key:
+            raise ValueError("xAI API key is required")
+        
+        # Using httpx for async operations
+        import httpx
+        self.client = httpx.AsyncClient(
+            base_url="https://api.groq.com/v1",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
             }
-        },
-        "required": ["language", "requirements"]
-    }
-    
-    result_schema = {
-        "type": "object",
-        "properties": {
-            "code": {"type": "string"},
-            "explanation": {"type": "string"},
-            "model_used": {"type": "string"},
-            "usage": {
-                "type": "object",
-                "properties": {
-                    "prompt_tokens": {"type": "integer"},
-                    "completion_tokens": {"type": "integer"},
-                    "total_tokens": {"type": "integer"}
-                }
-            }
+        )
+        
+    async def generate_completion(self, messages: List[Dict[str, Any]], parameters: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Generate completions using xAI's Grok models.
+        """
+        if not self.client:
+            self.setup()
+            
+        model = parameters.get("model", self.model)
+        temperature = parameters.get("temperature", 0.7)
+        max_tokens = parameters.get("max_tokens", 1000)
+        
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens
         }
-    }
-    
-    async def resolve(self, task: Task) -> Task:
-        """
-        Resolve the task by generating code.
-        """
-        task.status = TaskStatus.IN_PROGRESS
+        
+        # Add tools if provided
+        if "tools" in parameters:
+            payload["tools"] = parameters["tools"]
         
         try:
-            language = task.input_data["language"]
-            requirements = task.input_data["requirements"]
-            context = task.input_data.get("context", "")
-            parameters = task.input_data.get("parameters", {})
+            response = await self.client.post(
+                "/chat/completions",
+                json=payload
+            )
+            response.raise_for_status()
+            response_data = response.json()
             
-            if "model" not in parameters:
-                parameters["model"] = "gpt-4"  # Default to GPT-4 for code generation
+            # Format response data
+            result = {
+                "response": response_data["choices"][0]["message"]["content"],
+                "model_used": model,
+                "usage": {
+                    "prompt_tokens": response_data["usage"]["prompt_tokens"],
+                    "completion_tokens": response_data["usage"]["completion_tokens"],
+                    "total_tokens": response_data["usage"]["total_tokens"]
+                }
+            }
+            
+            # Include tool calls if present
+            if "tool_calls" in response_data["choices"][0]["message"]:
+                result["tool_calls"] = response_data["choices"][0]["message"]["tool_calls"]
                 
-            prompt = f"""
-            Please generate {language} code based on the following requirements:
-            
-            {requirements}
-            
-            {"Additional context:" if context else ""}
-            {context if context else ""}
-            
-            Please provide only the functional code without explanations within the code block.
-            After the code block, please provide a brief explanation of how the code works.
-            """
-            
-            result = await self.generate_text(prompt, parameters)
-            
-            # Extract code and explanation from the response
-            content = result["response"]
-            code_pattern = r"```[\w]*\n(.*?)```"
-            code_match = re.search(code_pattern, content, re.DOTALL)
-            
-            if code_match:
-                code = code_match.group(1).strip()
-                explanation = content.split("```")[-1].strip()
-            else:
-                code = content
-                explanation = "No separate explanation provided."
-            
-            task.result = TaskResult(data={
-                "code": code,
-                "explanation": explanation,
-                "model_used": result["model_used"],
-                "usage": result["usage"]
-            })
-            task.status = TaskStatus.COMPLETED
+            return result
             
         except Exception as e:
-            task.status = TaskStatus.FAILED
-            task.error = TaskError(
-                code="code_generation_error",
-                message=str(e),
-                details={"traceback": traceback.format_exc()}
+            raise TaskError(
+                code="xai_error",
+                message=f"Error generating completion with xAI: {str(e)}",
+                details={"provider": "xAI"}
             )
             
-        return task
-```
-
-### TextAnalysisResolver
-
-```python
-class TextAnalysisResolver(AnthropicTaskResolver):
-    """
-    TaskResolver for analyzing text using Anthropic Claude models.
-    """
-    name = "TextAnalysisResolver"
-    description = "Analyzes text for sentiment, entities, and themes"
-    version = "1.0.0"
-    
-    input_schema = {
-        "type": "object",
-        "properties": {
-            "text": {"type": "string"},
-            "analysis_type": {"type": "string", "enum": ["sentiment", "entities", "themes", "all"]},
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "temperature": {"type": "number", "minimum": 0, "maximum": 2},
-                    "model": {"type": "string"}
-                }
-            }
-        },
-        "required": ["text", "analysis_type"]
-    }
-    
-    result_schema = {
-        "type": "object",
-        "properties": {
-            "analysis": {"type": "object"},
-            "model_used": {"type": "string"},
-            "usage": {
-                "type": "object",
-                "properties": {
-                    "prompt_tokens": {"type": "integer"},
-                    "completion_tokens": {"type": "integer"},
-                    "total_tokens": {"type": "integer"}
-                }
-            }
-        }
-    }
-    
-    async def resolve(self, task: Task) -> Task:
+    async def health_check(self) -> bool:
         """
-        Resolve the task by analyzing text.
+        Check if the xAI client is properly configured.
         """
-        task.status = TaskStatus.IN_PROGRESS
-        
         try:
-            text = task.input_data["text"]
-            analysis_type = task.input_data["analysis_type"]
-            parameters = task.input_data.get("parameters", {})
-            
-            if "model" not in parameters:
-                parameters["model"] = "claude-3-opus-20240229"  # Default to Claude 3 Opus for analysis
+            if not self.api_key:
+                return False
                 
-            prompt = f"""
-            Please analyze the following text for {analysis_type}:
+            if not self.client:
+                self.setup()
+                
+            # Simple test call to verify connectivity
+            response = await self.client.get("/models")
+            response.raise_for_status()
+            return True
             
-            {text}
+        except Exception:
+            return False
             
-            Provide your analysis in JSON format with the following structure:
-            
-            ```json
-            {{
-              "analysis_type": "{analysis_type}",
-              "results": {{
-                // Analysis results here
-              }}
-            }}
-            ```
-            """
-            
-            result = await self.generate_text(prompt, parameters)
-            
-            # Extract JSON from the response
-            content = result["response"]
-            json_pattern = r"```json\s*(.*?)\s*```"
-            json_match = re.search(json_pattern, content, re.DOTALL)
-            
-            if json_match:
-                analysis_json = json.loads(json_match.group(1))
-            else:
-                # Try to find any JSON in the response
-                json_pattern = r"({[\s\S]*})"
-                json_match = re.search(json_pattern, content)
-                if json_match:
-                    analysis_json = json.loads(json_match.group(1))
-                else:
-                    analysis_json = {"error": "Could not parse JSON from response", "raw_response": content}
-            
-            task.result = TaskResult(data={
-                "analysis": analysis_json,
-                "model_used": result["model_used"],
-                "usage": result["usage"]
-            })
-            task.status = TaskStatus.COMPLETED
-            
-        except Exception as e:
-            task.status = TaskStatus.FAILED
-            task.error = TaskError(
-                code="text_analysis_error",
-                message=str(e),
-                details={"traceback": traceback.format_exc()}
-            )
-            
-        return task
+    async def close(self):
+        """
+        Close the HTTP client when done.
+        """
+        if self.client:
+            await self.client.aclose()
 ```
 
 ## Factory Pattern for LLM TaskResolvers
 
-To simplify the creation and use of LLM TaskResolvers, we can implement a factory pattern:
+To simplify the creation and use of LLM TaskResolvers, we use a factory pattern:
 
 ```python
 class LLMTaskResolverFactory:
@@ -553,12 +558,12 @@ class LLMTaskResolverFactory:
     """
     
     @staticmethod
-    def create_resolver(provider: str, **kwargs) -> BaseLLMTaskResolver:
+    async def create_resolver(provider: str, **kwargs) -> BaseLLMTaskResolver:
         """
         Create an LLM TaskResolver for the specified provider.
         
         Args:
-            provider: The LLM provider ("openai", "anthropic", "together")
+            provider: The LLM provider ("openai", "anthropic", "together", "xai")
             **kwargs: Additional arguments to pass to the resolver constructor
             
         Returns:
@@ -572,92 +577,34 @@ class LLMTaskResolverFactory:
             return AnthropicTaskResolver(**kwargs)
         elif provider == "together":
             return TogetherAITaskResolver(**kwargs)
+        elif provider == "xai":
+            return XAIResolver(**kwargs)
         else:
             raise ValueError(f"Unknown LLM provider: {provider}")
     
     @staticmethod
-    def create_specialized_resolver(resolver_type: str, **kwargs) -> BaseLLMTaskResolver:
+    async def close_all_resolvers(resolvers: List[BaseLLMTaskResolver]):
         """
-        Create a specialized LLM TaskResolver.
-        
-        Args:
-            resolver_type: The type of specialized resolver
-            **kwargs: Additional arguments to pass to the resolver constructor
-            
-        Returns:
-            An instance of the appropriate specialized LLM TaskResolver
+        Close all resolvers that have a close method.
         """
-        resolver_type = resolver_type.lower()
-        
-        if resolver_type == "code_generation":
-            return CodeGenerationResolver(**kwargs)
-        elif resolver_type == "text_analysis":
-            return TextAnalysisResolver(**kwargs)
-        else:
-            raise ValueError(f"Unknown specialized resolver type: {resolver_type}")
+        for resolver in resolvers:
+            if hasattr(resolver, "close") and callable(resolver.close):
+                await resolver.close()
 ```
 
-## Main Entry Point for Testing LLM TaskResolvers
+## Key Updates in LLM API Usage
 
-Each LLM TaskResolver includes a main entry point for testing and health checks:
+1. **Exclusive ChatML Message Format**: All providers now require the ChatML format with role-based messages. Legacy single-prompt format is no longer supported.
+2. **Tool/Function Calling**: All major providers now support tool/function calling with slightly different interfaces.
+3. **Async HTTP Clients**: Using httpx for better async support in API calls.
+4. **Resource Management**: Added proper client closing methods for long-running applications.
+5. **Error Handling**: Improved error handling and reporting.
+6. **New Models**: Updated to reference the latest models from each provider.
 
-```python
-def main():
-    """
-    Main entry point for testing the LLM TaskResolvers.
-    """
-    # Load environment variables
-    from dotenv import load_dotenv
-    load_dotenv()
-    
-    # Create resolvers
-    factory = LLMTaskResolverFactory()
-    openai_resolver = factory.create_resolver("openai")
-    anthropic_resolver = factory.create_resolver("anthropic")
-    together_resolver = factory.create_resolver("together")
-    
-    # Test resolvers
-    async def test_resolvers():
-        print("Testing OpenAI Resolver...")
-        openai_healthy = openai_resolver.health_check()
-        print(f"Health check: {'PASSED' if openai_healthy else 'FAILED'}")
-        
-        print("\nTesting Anthropic Resolver...")
-        anthropic_healthy = anthropic_resolver.health_check()
-        print(f"Health check: {'PASSED' if anthropic_healthy else 'FAILED'}")
-        
-        print("\nTesting Together AI Resolver...")
-        together_healthy = together_resolver.health_check()
-        print(f"Health check: {'PASSED' if together_healthy else 'FAILED'}")
-        
-        # Test with a sample task
-        if openai_healthy:
-            task = Task(
-                id="test-task",
-                description="Test OpenAI completion",
-                input_data={
-                    "prompt": "What are the benefits of microservices architecture?",
-                    "parameters": {
-                        "model": "gpt-3.5-turbo",
-                        "temperature": 0.7,
-                        "max_tokens": 200
-                    }
-                },
-                created_at=datetime.now(),
-                updated_at=datetime.now()
-            )
-            
-            print("\nSending task to OpenAI Resolver...")
-            result_task = await openai_resolver.resolve(task)
-            
-            if result_task.status == TaskStatus.COMPLETED:
-                print(f"\nResult:\n{result_task.result.data['response']}")
-                print(f"\nTokens used: {result_task.result.data['usage']['total_tokens']}")
-            else:
-                print(f"\nError: {result_task.error.message}")
-    
-    # Run the test
-    asyncio.run(test_resolvers())
+## Implementation Considerations
 
-if __name__ == "__main__":
-    main() 
+1. **Rate Limiting**: Implement retry logic with exponential backoff for rate limits.
+2. **Streaming**: Add support for streaming responses where applicable.
+3. **Caching**: Consider implementing response caching for identical prompts.
+4. **Model Selection**: Implement automatic model fallback for when preferred models are unavailable.
+5. **Cost Optimization**: Track token usage and implement budget controls 
