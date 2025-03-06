@@ -21,6 +21,10 @@ This document tracks the testing results for all implemented TaskResolvers in th
 | LLMTaskResolverFactory | 2024-05-15 | 🟢 Passed | 🟢 Passed | Provider inference, model selection, fallback behavior | None | N/A | - | 3 |
 | DatabaseTaskResolver | 2024-05-15 | 🟢 Passed | 🟢 Passed | SELECT, INSERT, UPDATE, DELETE operations, schema queries | Type checking for health_check() and TaskError | Fixed | - | 3 |
 | FileOperationsResolver | 2024-05-15 | 🟢 Passed | 🟢 Passed | File read/write operations, list directory, move/copy/delete files | Type conversion in size_bytes assignment | Fixed | - | 3 |
+| TaskResolverRegistry | 2024-05-19 | 🟡 Partial | 🟡 Partial | Registry entry, resolver search by name/version/tag, resolver retrieval, registration/unregistration | Type compatibility for version keys | In Progress | - | 3 |
+| MasteryRegistry | 2024-05-15 | 🟡 Partial | 🟡 Partial | Mastery definition storage, retrieval by name/version/tag, search capability | Type compatibility for version keys | In Progress | - | 3 |
+| HealthCheckResolver | 2024-05-19 | 🟡 Partial | 🟡 Partial | Single resolver health check, all resolvers check, health status reporting | Type annotations for TaskError and async methods | Fixed | - | 3 |
+| VectorSearchResolver | 2024-05-19 | 🟡 Partial | 🟡 Partial | Vector similarity search, document indexing, metadata filtering, batch operations | Type annotations for NumPy dependencies | In Progress | - | 3 |
 
 ## Detailed Test Reports
 
@@ -167,6 +171,107 @@ This document tracks the testing results for all implemented TaskResolvers in th
 **Retry Configuration**: None (file operations are not retried)
 
 **Notes and Observations**: Includes safety features like base directory validation, file size limits, and permission controls. Handles multiple file formats correctly.
+
+### TaskResolverRegistry
+
+**Test Date**: 2024-05-19
+
+**Health Check Results**: Partial - Registry initialization successful but comprehensive versioning tests needed.
+
+**Sample Tasks Used**:
+1. Register multiple resolvers with different versions
+2. Get resolver by name and version
+3. Search for resolvers by tag
+4. Search for resolvers by capability
+5. Find resolver for a specific task type
+
+**Issues Found**:
+- Type compatibility issue with version key comparison
+- Need for better error handling when resolver is not found
+
+**Fix Status**: In Progress - Type compatibility issues being addressed
+
+**Evolution History**: Initial implementation
+
+**Retry Configuration**: None (registry operations are not retried)
+
+**Notes and Observations**: Provides comprehensive resolver management with versioning support. Search capabilities allow for dynamic resolver selection based on task requirements.
+
+### MasteryRegistry
+
+**Test Date**: 2024-05-15
+
+**Health Check Results**: Partial - Registry initialization successful but comprehensive versioning tests needed.
+
+**Sample Tasks Used**:
+1. Register multiple masteries with different versions
+2. Get mastery by name and version
+3. Search for masteries by tag
+4. Find mastery for a specific task type
+
+**Issues Found**:
+- Type compatibility issue with version key comparison
+- Need for better error handling when mastery is not found
+
+**Fix Status**: In Progress - Type compatibility issues being addressed
+
+**Evolution History**: Initial implementation
+
+**Retry Configuration**: None (registry operations are not retried)
+
+**Notes and Observations**: Provides comprehensive mastery management with versioning support. The MasteryDefinition class enables persistent storage of mastery configurations.
+
+### HealthCheckResolver
+
+**Test Date**: 2024-05-19
+
+**Health Check Results**: Partial - Basic health checking functionality works but comprehensive tests needed.
+
+**Sample Tasks Used**:
+1. Check health of a specific resolver
+2. Check health of all resolvers
+3. Get health status of specific resolver
+4. Get health history of a resolver
+
+**Issues Found**:
+- Type annotations for TaskError parameters
+- Conversion between async and sync methods
+- Proper error type handling
+
+**Fix Status**: Fixed - All type annotations and async method issues addressed
+
+**Evolution History**: Initial implementation
+
+**Retry Configuration**: None (health checks are not retried)
+
+**Notes and Observations**: Provides comprehensive health monitoring system for all TaskResolvers in the registry. The parallel health checking capability uses asyncio for efficiency.
+
+### VectorSearchResolver
+
+**Test Date**: 2024-05-19
+
+**Health Check Results**: Partial - Basic vector operations work but dependency installation needed for full testing.
+
+**Sample Tasks Used**:
+1. Index document with vector embedding
+2. Search for similar documents
+3. Delete document
+4. Batch index multiple documents
+5. Filter search results by metadata
+6. Upsert document
+
+**Issues Found**:
+- Dependency management for vector libraries (numpy, faiss, sentence-transformers)
+- Type annotations for external libraries
+- Fallback embedding generation needs better determinism
+
+**Fix Status**: In Progress - Adding proper dependency management and type annotations
+
+**Evolution History**: Initial implementation
+
+**Retry Configuration**: None (vector operations are not retried)
+
+**Notes and Observations**: The resolver provides a flexible architecture for vector search with multiple backend options. The in-memory store works well for testing and small datasets, while specialized backends like FAISS can be used for production.
 
 ## Testing Framework Guidelines
 
