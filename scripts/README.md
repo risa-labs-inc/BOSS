@@ -10,7 +10,7 @@ This directory contains utility scripts for the BOSS project.
   - Usage: `./poetry_latest.sh check [package]` to check the latest version of a package
   - Usage: `./poetry_latest.sh install [package]` to install a package at its latest version
   - Usage: `./poetry_latest.sh update` to update all dependencies
-  - Usage: `./poetry_latest.sh audit` to perform a full dependency audit
+  - Usage: `./poetry_latest.sh audit` to perform a full dependency audit and generate a report
 
 - `poetry_functions.sh`: Contains shared functions for Poetry-related scripts
 
@@ -67,6 +67,14 @@ This directory contains utility scripts for the BOSS project.
    ```bash
    python scripts/script_name.py [arguments]
    ```
+
+## Dependency Management Workflow
+
+1. **Check for updates**: Run `./scripts/poetry_latest.sh check [package]` to check the latest version of a package
+2. **Run audit**: Run `./scripts/poetry_latest.sh audit` monthly to generate a comprehensive audit report
+3. **Update dependency tracker**: After audit, update docs/dependency_tracker.md with latest versions and statuses
+4. **Update dependencies**: Run `./scripts/poetry_latest.sh install [package]` to install specific package updates
+5. **Bulk updates**: Use `./scripts/poetry_latest.sh update` for bulk updates (use with caution)
 
 ## Best Practices
 

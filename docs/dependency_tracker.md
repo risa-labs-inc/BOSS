@@ -6,42 +6,58 @@ This document tracks all dependencies in the project, their versions, when they 
 
 | Package       | Version  | Updated    | Status      | Notes                                |
 |---------------|----------|------------|-------------|--------------------------------------|
-| python        | ^3.9     | 2024-03-05 | Up-to-date  | Project requirement                  |
-| numpy         | ^1.22.0  | 2024-03-06 | Outdated    | Latest is ^2.2.3, update planned     |
-| faiss-cpu     | ^1.7.4   | 2024-03-05 | Up-to-date  | ML feature indexing and search       |
-| asyncio       | ^3.4.3   | 2024-03-05 | Up-to-date  | Async operations support             |
-| together      | ^1.4.1   | 2024-03-05 | Up-to-date  | Latest Together AI API integration   |
+| python        | ^3.10    | 2024-03-06 | Up-to-date  | Project requirement                  |
+| numpy         | ^2.2.3   | 2024-03-06 | Up-to-date  | Latest version                       |
+| faiss-cpu     | ^1.10.0  | 2024-03-06 | Up-to-date  | Latest version                       |
+| asyncio       | ^3.4.3   | 2024-03-06 | Up-to-date  | Async operations support             |
+| together      | ^1.4.1   | 2024-03-06 | Up-to-date  | Latest Together AI API integration   |
+| xai-grok-sdk  | ^0.0.12  | 2024-03-06 | Up-to-date  | Official xAI Grok API client         |
 
 ## Development Dependencies
 
 | Package       | Version  | Updated    | Status      | Notes                                |
 |---------------|----------|------------|-------------|--------------------------------------|
-| pytest        | ^7.3.1   | 2024-03-05 | Outdated    | Latest is ^8.3.5, update planned     |
-| pytest-asyncio| ^0.21.0  | 2024-03-05 | Outdated    | Latest is ^0.25.3, update planned    |
-| mypy          | ^1.3.0   | 2024-03-06 | Outdated    | Latest is ^1.15.0, update planned    |
-| black         | ^23.3.0  | 2024-03-06 | Outdated    | Latest is ^25.1.0, update planned    |
-| isort         | ^5.12.0  | 2024-03-05 | Outdated    | Latest is ^6.0.1, update planned     |
-| flake8        | ^6.0.0   | 2024-03-05 | Outdated    | Latest is ^7.1.2, update planned     |
+| pytest        | ^8.3.5   | 2024-03-06 | Up-to-date  | Latest version                       |
+| pytest-asyncio| ^0.25.3  | 2024-03-06 | Up-to-date  | Latest version                       |
+| mypy          | ^1.15.0  | 2024-03-06 | Up-to-date  | Latest version                       |
+| black         | ^25.1.0  | 2024-03-06 | Up-to-date  | Latest version                       |
+| isort         | ^6.0.1   | 2024-03-06 | Up-to-date  | Latest version                       |
+| flake8        | ^7.1.2   | 2024-03-06 | Up-to-date  | Latest version                       |
+
+## Other Dependencies (From Audit)
+
+| Package           | Current Version | Latest Version | Status      | Notes                      |
+|-------------------|----------------|----------------|-------------|----------------------------|
+| click             | -              | ^8.1.8         | Outdated    | Update with other deps     |
+| iniconfig         | -              | ^2.0.0         | Outdated    | Update with other deps     |
+| mccabe            | -              | ^0.7.0         | Outdated    | Update with other deps     |
+| mypy-extensions   | -              | ^1.0.0         | Outdated    | Update with other deps     |
+| packaging         | -              | ^24.2          | Outdated    | Update with other deps     |
+| pathspec          | -              | ^0.12.1        | Outdated    | Update with other deps     |
+| platformdirs      | -              | ^4.3.6         | Outdated    | Update with other deps     |
+| pluggy            | -              | ^1.5.0         | Outdated    | Update with other deps     |
+| pycodestyle       | -              | ^2.12.1        | Up-to-date  | Updated with latest flake8 |
+| pyflakes          | -              | ^3.2.0         | Up-to-date  | Updated with latest flake8 |
+| typing-extensions | -              | ^4.12.2        | Outdated    | Update with other deps     |
+| requests          | -              | ^2.31.0        | Up-to-date  | Added with xai-grok-sdk    |
 
 ## Future/Planned Dependencies
 
 | Package       | Planned Version | Status      | Notes                                |
 |---------------|----------------|-------------|--------------------------------------|
-| xai           | TBD            | Planned     | Not yet officially available         |
+| official-grok-sdk | TBD        | Planned     | When official Grok 3 API is released |
 
 ## How to Update the Tracker
 
 1. When adding a new dependency, add a new entry to the relevant table
 2. When updating a dependency, update the "Version" and "Updated" columns
-3. Regularly review the "Status" column and check for newer versions with:
-   ```
-   ./scripts/poetry_latest.sh check [package-name]
-   ```
+3. Regularly review the "Status" column and check for newer versions
 4. After performing dependency updates, update this document
 
 ## Last Full Dependency Audit: 2024-03-06
 
-Run a new full audit with:
-```
-./scripts/poetry_latest.sh update
-``` 
+## Update Plan (Q2 2024)
+
+1. Monitor for official Grok 3 API release (priority: high)
+2. Update all remaining indirect dependencies (priority: medium)
+3. Update secondary dependencies (priority: low) 

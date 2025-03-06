@@ -1,124 +1,77 @@
 """
-xAI Task Resolver for the BOSS system.
+XAI Task Resolver for BOSS
 
-This module implements a TaskResolver using xAI's API for generating completions.
-It supports integration with xAI's Grok models including the latest Grok-3.
-
-Note: As of March 2025, xAI has not released an official Python client library
-for their Grok API. This implementation uses a placeholder structure based on
-publicly available information about the API and will be updated when an official
-client is released.
+This module supports integration with xAI's Grok models.
+It uses the official xai-grok-sdk package for API access.
 """
-import os
+
+import asyncio
 import json
 import logging
-import asyncio
-from typing import Any, Dict, List, Optional, Union, cast, TypedDict, Callable, Awaitable
+import os
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Union, Callable, Awaitable
 
-from boss.core.task_models import Task, TaskError
-from boss.core.task_status import TaskStatus
-from boss.core.task_retry import TaskRetryManager
 from boss.core.base_llm_resolver import BaseLLMTaskResolver, LLMResponse
+from boss.core.task_models import Task, TaskError, TaskMetadata
 from boss.core.task_resolver import TaskResolverMetadata
+from boss.core.task_retry import TaskRetryManager, BackoffStrategy
+from boss.core.task_status import TaskStatus
 
-# Type definitions for better type checking
-class XAITextChoice(TypedDict):
-    text: str
-    finish_reason: str
+logger = logging.getLogger(__name__)
 
-class XAIMessage(TypedDict):
-    role: str
-    content: str
-
-class XAIChatChoice(TypedDict):
-    message: XAIMessage
-    finish_reason: str
-
-class XAIUsage(TypedDict):
-    prompt_tokens: int
-    completion_tokens: int
-    total_tokens: int
-
-class XAIResponse(TypedDict):
-    id: str
-    model: str
-    choices: List[Union[XAITextChoice, XAIChatChoice]]
-    usage: XAIUsage
-
-# Flag to check if xAI package is installed
-XAI_PACKAGE_AVAILABLE = False
-
-# Try importing the xAI package
+# Try importing the xAI Grok SDK
 try:
-    # The official package is not yet released
-    # This is a placeholder import for when it becomes available
-    import xai  # type: ignore
-    XAI_PACKAGE_AVAILABLE = True
+    from xai_grok_sdk import XAI
+    XAI_SDK_AVAILABLE = True
 except ImportError:
-    # If xAI package is not installed, we'll handle this case gracefully
-    pass
-except Exception as e:
-    # Handle other potential errors with imports
-    logging.warning(f"Error importing xAI package: {e}")
-
+    XAI_SDK_AVAILABLE = False
+    logger.warning("xai-grok-sdk not available. Install with 'poetry add xai-grok-sdk'")
 
 class XAITaskResolver(BaseLLMTaskResolver):
     """
-    TaskResolver that uses xAI's Grok models.
+    Task resolver for xAI's Grok models.
     
-    This resolver integrates with xAI's API to generate completions
-    from Grok models, including Grok-1, Grok-2, and Grok-3.
+    This resolver supports available Grok models including:
+    - grok-2-1212 (latest stable Grok 2 version)
+    - grok-beta (latest beta model)
+    
+    For API access, you need to provide an API key from xAI.
     """
-    
+
     def __init__(
         self,
-        model_name: str = "grok-3",  # Updated default to Grok-3
+        model_name: str = "grok-2-1212",  # Default to stable version
         api_key: Optional[str] = None,
         metadata: Optional[TaskResolverMetadata] = None,
         temperature: float = 0.7,
-        max_tokens: int = 4096,  # Increased default max tokens for Grok-3
+        max_tokens: Optional[int] = None,
         timeout_seconds: int = 60,
         retry_attempts: int = 2,
         system_prompt: Optional[str] = None,
     ):
         """
-        Initialize a new XAITaskResolver.
+        Initialize the XAI Task Resolver.
         
         Args:
-            model_name: The model name to use (defaults to "grok-3").
-            api_key: The xAI API key. If None, it will be read from the XAI_API_KEY environment variable.
-            metadata: Additional metadata to include with the response.
-            temperature: The sampling temperature to use.
-            max_tokens: The maximum number of tokens to generate.
-            timeout_seconds: Timeout in seconds for API calls.
-            retry_attempts: Number of retry attempts for failed API calls.
-            system_prompt: System prompt to use for the LLM.
-        
-        Raises:
-            ValueError: If no API key is provided and XAI_API_KEY is not set in the environment.
+            model_name: Name of the Grok model to use (default: grok-2-1212)
+                Available models: grok-2-1212, grok-beta
+            api_key: xAI API key (if None, uses XAI_API_KEY environment variable)
+            metadata: Task resolver metadata
+            temperature: Sampling temperature (0.0 to 1.0)
+            max_tokens: Maximum tokens to generate (None for model default)
+            timeout_seconds: Timeout for API calls
+            retry_attempts: Number of retry attempts for API calls
+            system_prompt: Default system prompt to use
         """
-        # Get API key from parameter or environment variable
-        self.api_key = api_key or os.environ.get("XAI_API_KEY")
-        if not self.api_key:
-            raise ValueError("No API key provided. Set the XAI_API_KEY environment variable.")
-        
-        # Create resolver metadata if not provided
-        resolver_metadata = None
-        if metadata is not None:
-            resolver_metadata = metadata
-        else:
-            resolver_metadata = TaskResolverMetadata(
-                name="XAITaskResolver",
-                version="0.3.0",  # Updated version number
-                description=f"TaskResolver using xAI's {model_name} model",
-                tags=["llm", "xai", model_name]
-            )
-        
         # Initialize base class
         super().__init__(
             model_name=model_name, 
-            metadata=resolver_metadata,
+            metadata=metadata or TaskResolverMetadata(
+                name="xai",
+                description="XAI Grok task resolver",
+                version="1.0.0"
+            ),
             temperature=temperature,
             max_tokens=max_tokens,
             timeout_seconds=timeout_seconds,
@@ -126,30 +79,41 @@ class XAITaskResolver(BaseLLMTaskResolver):
             system_prompt=system_prompt
         )
         
-        # Store instance variables
-        self.logger = logging.getLogger("boss.llm_resolver.XAITaskResolver")
+        # Get API key
+        self.api_key = api_key or os.environ.get("XAI_API_KEY")
+        if not self.api_key and XAI_SDK_AVAILABLE:
+            logger.warning("No API key provided. Set the XAI_API_KEY environment variable.")
         
-        # Retry manager for handling failed API calls
-        self.retry_manager = TaskRetryManager(max_retries=retry_attempts)
-        
-        # Log warning about dependency status
-        if not XAI_PACKAGE_AVAILABLE:
-            self.logger.warning(
-                "Running in placeholder mode - xAI package not available. "
-                "Some functionality may be limited."
-            )
-            
-        # Initialize client if package is available
+        # Initialize client to None (will be created on first use)
         self.client = None
-        if XAI_PACKAGE_AVAILABLE:
+        
+        # Validate model name
+        if model_name not in ["grok-2-1212", "grok-beta"]:
+            logger.warning(f"Model {model_name} may not be supported. Supported models: grok-2-1212, grok-beta")
+        
+        # Initialize retry manager with correct parameters
+        self.retry_manager = TaskRetryManager(
+            max_retries=retry_attempts,
+            strategy=BackoffStrategy.EXPONENTIAL,
+            base_delay_seconds=1.0,
+            max_delay_seconds=10.0
+        )
+
+    def _initialize_client(self) -> bool:
+        """Initialize the xAI client if not already initialized."""
+        if not self.client and XAI_SDK_AVAILABLE and self.api_key:
             try:
-                # This is a placeholder for the actual client initialization
-                # When xAI releases their official client, this will be updated
-                self.client = xai.Client(api_key=self.api_key)  # type: ignore
+                self.client = XAI(
+                    api_key=self.api_key,
+                    model=self.model_name
+                )
+                logger.info(f"Initialized xAI client with model {self.model_name}")
+                return True
             except Exception as e:
-                self.logger.error(f"Failed to initialize xAI client: {e}")
-                self.client = None
-    
+                logger.error(f"Failed to initialize xAI client: {str(e)}")
+                return False
+        return self.client is not None
+
     async def generate_completion(
         self,
         prompt: str,
@@ -158,309 +122,184 @@ class XAITaskResolver(BaseLLMTaskResolver):
         max_tokens: Optional[int] = None
     ) -> LLMResponse:
         """
-        Generate a completion for the given prompt.
+        Generate a completion using the Grok API.
         
         Args:
-            prompt: The prompt to generate a completion for.
-            system_prompt: System prompt to use (optional).
-            temperature: Temperature for sampling (optional).
-            max_tokens: Maximum tokens to generate (optional).
+            prompt: The prompt to send to the model
+            system_prompt: Optional system prompt
+            temperature: Optional temperature override
+            max_tokens: Optional max tokens override
             
         Returns:
-            LLMResponse: The response from the LLM.
+            LLMResponse with the generated text and metadata
             
         Raises:
-            TaskError: If there is an error processing the request.
+            TaskError: If the API call fails
         """
-        # Use default values if not provided
-        actual_system_prompt = system_prompt or self.system_prompt
-        actual_temperature = temperature if temperature is not None else self.temperature
-        actual_max_tokens = max_tokens if max_tokens is not None else self.max_tokens
+        # Use provided values or fall back to defaults
+        temperature = temperature if temperature is not None else self.temperature
+        max_tokens = max_tokens if max_tokens is not None else self.max_tokens
+        system_prompt = system_prompt if system_prompt is not None else self.system_prompt
         
         # Create a dummy task for error handling
-        dummy_task = Task(id="dummy", name="dummy")
+        dummy_task = Task(
+            name="grok_completion",
+            input_data={"prompt": prompt},
+            metadata=TaskMetadata(
+                owner="xai_resolver",
+                tags=["grok", "completion"]
+            )
+        )
         
-        if not XAI_PACKAGE_AVAILABLE or not self.client:
-            # Return a simulated response in placeholder mode
-            self.logger.warning("Using simulated response in placeholder mode")
+        # Check if xAI SDK is available
+        if not XAI_SDK_AVAILABLE:
+            error_msg = "xAI Grok SDK is not available. Install with 'poetry add xai-grok-sdk'"
+            logger.error(error_msg)
+            raise Exception(error_msg)
+        
+        # Initialize client if needed
+        if not self._initialize_client():
+            error_msg = "Failed to initialize xAI client"
+            logger.error(error_msg)
+            raise Exception(error_msg)
+        
+        # Prepare messages
+        messages = []
+        
+        # Add system prompt if provided
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        
+        # Add user message
+        messages.append({"role": "user", "content": prompt})
+
+        # Make API call
+        try:
+            # Execute in a thread to avoid blocking the event loop
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    self.client.invoke,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens
+                ),
+                timeout=self.timeout_seconds
+            )
             
-            # For chat models (like Grok-3), simulate a chat response
-            simulated_content = f"[This is a simulated response from {self.model_name} - xAI package not installed or client initialization failed]\n\nPrompt: {prompt[:100]}..."
+            # Extract content from response
+            message = response.choices[0].message
+            generated_text = message.content
             
-            # Create a simulated response consistent with the response type
-            simulated_response: Dict[str, Any] = {
-                "id": f"sim_{datetime.now().timestamp()}",
-                "model": self.model_name,
-                "choices": [
-                    {
-                        "message": {
-                            "role": "assistant",
-                            "content": simulated_content
-                        },
-                        "finish_reason": "stop"
-                    }
-                ],
-                "usage": {
-                    "prompt_tokens": len(prompt) // 4,
-                    "completion_tokens": 50,
-                    "total_tokens": (len(prompt) // 4) + 50
-                }
+            # Get token usage if available
+            tokens_used = {
+                "prompt_tokens": getattr(response.usage, "prompt_tokens", 0),
+                "completion_tokens": getattr(response.usage, "completion_tokens", 0),
+                "total_tokens": getattr(response.usage, "total_tokens", 0)
             }
             
-            # Extract content depending on response type
-            simulated_content_from_response = simulated_response["choices"][0]["message"]["content"]
-            
+            # Return structured response
             return LLMResponse(
-                content=simulated_content_from_response,
+                content=generated_text,
                 model_name=self.model_name,
-                tokens_used={
-                    "prompt_tokens": simulated_response["usage"]["prompt_tokens"],
-                    "completion_tokens": simulated_response["usage"]["completion_tokens"],
-                    "total_tokens": simulated_response["usage"]["total_tokens"]
-                },
-                metadata={"placeholder": True, "timestamp": datetime.now().isoformat()},
-                raw_response=simulated_response
-            )
-        
-        try:
-            # Prepare messages for chat format (Grok-3 uses chat format)
-            messages = []
-            
-            # Add system message if provided
-            if actual_system_prompt:
-                messages.append({"role": "system", "content": actual_system_prompt})
-            
-            # Add user message
-            messages.append({"role": "user", "content": prompt})
-            
-            # This is a placeholder for the actual xAI API client usage
-            # To be updated when the official client is available
-            self.logger.debug(f"Sending request to xAI with model {self.model_name}")
-            
-            # Simulated API call
-            if self.client:
-                # This simulates an async API call with timeout
-                async with asyncio.timeout(self.timeout_seconds):
-                    # This would be the actual API call when the client is available
-                    # For now, we simulate a response
-                    await asyncio.sleep(0.5)  # Simulate API latency
-                    
-                    # Here we would use something like:
-                    # response = await self.client.chat.completions.create(
-                    #     model=self.model_name,
-                    #     messages=messages,
-                    #     temperature=actual_temperature,
-                    #     max_tokens=actual_max_tokens
-                    # )
-                    
-                    # For now, create a simulated response
-                    # Using explicit types to avoid linter errors
-                    chat_choice: XAIChatChoice = {
-                        "message": {
-                            "role": "assistant",
-                            "content": f"This is a simulated {self.model_name} response to: {prompt[:50]}..."
-                        },
-                        "finish_reason": "stop"
-                    }
-                    
-                    response: XAIResponse = {
-                        "id": f"gen_{datetime.now().timestamp()}",
-                        "model": self.model_name,
-                        "choices": [chat_choice],
-                        "usage": {
-                            "prompt_tokens": len(prompt) // 4,
-                            "completion_tokens": 50,
-                            "total_tokens": len(prompt) // 4 + 50
-                        }
-                    }
-            else:
-                # Should not reach here due to earlier check, but just in case
-                raise ValueError("xAI client not initialized")
-            
-            # Extract chat message content
-            if "message" in response["choices"][0]:
-                # Chat model response
-                chat_choice = cast(XAIChatChoice, response["choices"][0])
-                content = chat_choice["message"]["content"]
-            else:
-                # Text completion model response
-                text_choice = cast(XAITextChoice, response["choices"][0])
-                content = text_choice["text"]
-            
-            # Construct response
-            return LLMResponse(
-                content=content,
-                model_name=response["model"],
-                tokens_used={
-                    "prompt_tokens": response["usage"]["prompt_tokens"],
-                    "completion_tokens": response["usage"]["completion_tokens"],
-                    "total_tokens": response["usage"]["total_tokens"]
-                },
-                metadata={"id": response["id"], "timestamp": datetime.now().isoformat()},
-                raw_response=response
+                tokens_used=tokens_used,
+                raw_response=response,
+                metadata={
+                    "finish_reason": getattr(response.choices[0], "finish_reason", "stop")
+                }
             )
             
         except asyncio.TimeoutError:
-            error_message = f"Timeout calling xAI API after {self.timeout_seconds}s"
-            self.logger.error(error_message)
-            raise TaskError(
-                task=dummy_task,
-                error_type="XAITimeoutError",
-                message=error_message,
-                details={"model": self.model_name, "timeout_seconds": self.timeout_seconds}
-            )
+            error_msg = f"Request to Grok API timed out after {self.timeout_seconds} seconds"
+            logger.error(error_msg)
+            raise Exception(error_msg)
         except Exception as e:
-            error_message = f"Error calling xAI API: {str(e)}"
-            self.logger.error(error_message)
-            raise TaskError(
-                task=dummy_task,
-                error_type="XAIError",
-                message=error_message,
-                details={"model": self.model_name, "error": str(e)}
-            )
-    
+            error_msg = f"Error calling Grok API: {str(e)}"
+            logger.error(error_msg)
+            raise Exception(error_msg)
+
     async def process_task(self, task: Task) -> Task:
-        """
-        Process a task using the xAI LLM.
-        
-        Args:
-            task: The task to process.
-            
-        Returns:
-            Task: The processed task.
-        """
-        self.logger.info(f"Processing LLM task {task.id} with model {self.model_name}")
-        
-        # Initialize task metadata if not present
-        if task.metadata is None:
-            task.metadata = {}
-        
-        # Extract input data
+        """Process the task using the Grok API."""
+        # Extract resolver-specific parameters from the task
+        resolver_params = task.input_data.get("resolver_params", {})
         prompt = task.input_data.get("prompt", "")
         system_prompt = task.input_data.get("system_prompt", self.system_prompt)
         
-        if not prompt:
-            task.status = TaskStatus.FAILED
-            if task.error is None:
-                task.error = {}
-            task.error["message"] = "No prompt provided in input_data"
-            return task
-        
-        # Process the task
         try:
             # Generate completion
-            response = await self.generate_completion(
+            llm_response = await self.generate_completion(
                 prompt=prompt,
-                system_prompt=system_prompt
+                system_prompt=system_prompt,
+                temperature=resolver_params.get("temperature", self.temperature),
+                max_tokens=resolver_params.get("max_tokens", self.max_tokens)
             )
             
-            # Store the result in the task's result field
-            result_data = {
-                "content": response.content,
-                "model_name": response.model_name,
-                "tokens_used": response.tokens_used,
-                "metadata": response.metadata
-            }
+            # Process the response and update the task
+            task.result = self.process_response(llm_response, task)
             
-            # Update the task's result and status
-            task.result = result_data
-            task.status = TaskStatus.COMPLETED
-            
-            return task
-            
-        except TaskError as e:
-            # Handle task errors
-            task.status = TaskStatus.FAILED
-            if task.error is None:
-                task.error = {}
-            task.error["message"] = e.error_message
-            task.error["error_type"] = e.error_type
-            task.error["details"] = e.error_details
-            self.logger.error(f"Task {task.id} failed: {e.error_message}")
-            return task
         except Exception as e:
-            # Handle any other exceptions
-            task.status = TaskStatus.FAILED
-            if task.error is None:
-                task.error = {}
-            task.error["message"] = str(e)
-            task.error["error_type"] = "XAITaskError"
-            self.logger.error(f"Task {task.id} failed: {str(e)}")
-            return task
+            task.error = {
+                "message": str(e),
+                "details": {"model": self.model_name}
+            }
+        
+        return task
     
     def can_handle(self, task: Task) -> bool:
         """
-        Determine if this resolver can handle the given task.
+        Check if this resolver can handle the given task.
         
         Args:
-            task: The task to check.
+            task: The task to check
             
         Returns:
-            bool: True if this resolver can handle the task, False otherwise.
+            True if this resolver can handle the task, False otherwise
         """
-        # Check if task requires a specific LLM provider
-        provider = task.input_data.get("llm_provider", "")
-        if provider and provider.lower() in ["xai", "grok"]:
+        # Check if the task explicitly requests this resolver
+        resolver_name = task.input_data.get("resolver", "")
+        if resolver_name.lower() in ["xai", "grok"]:
             return True
         
-        # Check if task requires a specific model
+        # Check if the task explicitly requests a Grok model
         model = task.input_data.get("model", "")
-        if model and model.lower().startswith("grok"):
+        if model.lower().startswith("grok"):
             return True
         
         return False
     
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> bool:
         """
-        Check the health of the xAI integration.
+        Perform a health check on the resolver.
         
         Returns:
-            Dict[str, Any]: Health check results with status and details.
+            True if the resolver is healthy, False otherwise
         """
-        if not XAI_PACKAGE_AVAILABLE or not self.client:
-            # Return a simulated health check in placeholder mode
-            self.logger.warning("Using simulated health check in placeholder mode")
-            return {
-                "status": "degraded",
-                "model": self.model_name,
-                "message": "Running in placeholder mode - xAI package not available or client initialization failed",
-                "timestamp": datetime.now().isoformat(),
-                "metadata": self.metadata.to_dict()
-            }
+        health_info = {
+            "status": "unknown",
+            "model": self.model_name,
+            "api_available": XAI_SDK_AVAILABLE,
+            "client_initialized": self.client is not None,
+            "timestamp": datetime.now().isoformat()
+        }
         
-        health_prompt = "Respond with 'healthy' if you can process this request."
-        
+        if not XAI_SDK_AVAILABLE:
+            logger.error("xAI Grok SDK not available")
+            return False
+            
+        if not self.api_key:
+            logger.error("API key not configured")
+            return False
+            
         try:
-            # Try to generate a simple completion
-            response = await self.generate_completion(health_prompt)
+            # Simple health check prompt
+            test_prompt = "Respond with 'healthy' if you can read this message."
+            response = await self.generate_completion(test_prompt)
             
-            # Check if the response contains "healthy"
-            is_healthy = "healthy" in response.content.lower()
-            
-            result = {
-                "status": "healthy" if is_healthy else "degraded",
-                "model": self.model_name,
-                "response": response.content,
-                "tokens_used": response.tokens_used,
-                "metadata": self.metadata.to_dict(),
-                "timestamp": datetime.now().isoformat()
-            }
-            
-            if not is_healthy:
-                result["warning"] = "LLM response did not contain 'healthy'"
-                self.logger.warning(f"Health check response did not contain 'healthy': {response.content[:50]}...")
+            if "healthy" in response.content.lower():
+                return True
             else:
-                self.logger.info(f"Health check passed for {self.model_name}")
-            
-            return result
-            
+                logger.warning("Health check response did not contain expected value")
+                return False
+                
         except Exception as e:
-            # If an error occurs, the integration is not healthy
-            self.logger.error(f"Health check failed: {str(e)}")
-            return {
-                "status": "unhealthy",
-                "model": self.model_name,
-                "error": str(e),
-                "metadata": self.metadata.to_dict(),
-                "timestamp": datetime.now().isoformat()
-            } 
+            logger.error(f"Health check failed: {str(e)}")
+            return False 
