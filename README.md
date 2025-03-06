@@ -1,155 +1,203 @@
-# BOSS (Business Operations System Solver)
+# BOSS - Business Operations System Solver
 
-BOSS is a flexible framework for automating and orchestrating business operations through a system of specialized task resolvers.
+BOSS is a powerful framework for automating business operations through task resolvers. It provides a flexible architecture for handling various tasks from database operations to file handling and AI-powered text processing.
 
-## Overview
+## Features
 
-BOSS provides a modular architecture for defining, executing, and managing tasks across various business domains. At its core, BOSS consists of:
+- **Modular Architecture**: Build and combine specialized task resolvers
+- **Robust Error Handling**: Comprehensive error capturing and reporting
+- **Retry Logic**: Customizable retry strategies with backoff options
+- **Extensible Design**: Create your own task resolvers for specific business needs
+- **LLM Integration**: Built-in support for OpenAI, Anthropic, and other LLM providers
+- **Type Safety**: Fully typed with Python type annotations for better development experience
+- **Health Checks**: Built-in system for verifying resolver functionality
 
-- **Task Models**: Standardized representations of work to be done
-- **Task Resolvers**: Specialized components that process specific types of tasks 
-- **Workflow Capabilities**: Ways to chain and orchestrate multiple resolvers
-
-The framework is designed to be extensible, allowing organizations to integrate with various services, databases, APIs, and AI systems.
-
-## Key Features
-
-- **Flexible Task Resolution**: Process tasks with specialized resolvers based on task requirements
-- **AI Integration**: Built-in support for LLM-based task processing with models like Claude
-- **Database Operations**: Connect to and interact with various databases
-- **File Handling**: Process files in various formats
-- **Workflow Orchestration**: Chain multiple resolvers together for complex workflows
-- **Error Handling**: Robust retry mechanisms and error tracking
-- **Health Monitoring**: Built-in health checks for resolvers and dependencies
-
-## Architecture
-
-BOSS follows a modular architecture with these key components:
+## Key Components
 
 ### Core Components
 
-- **Task**: The fundamental unit of work with input data, status tracking, and error handling
-- **TaskResult**: Represents the outcome of task processing
-- **TaskResolver**: Abstract base class for all task resolvers
-- **TaskStatus**: Enumeration of possible task states (PENDING, PROCESSING, COMPLETED, ERROR, etc.)
+- **Task**: A generic data model representing a unit of work
+- **TaskResult**: The output of a task execution with status and metadata
+- **TaskStatus**: Enum representing possible task states
+- **TaskResolver**: Abstract base class for implementing task handling logic
+- **TaskRetryManager**: Manages retry logic with various backoff strategies
 
-### Resolver Types
+### LLM Components
 
-- **BaseLLMTaskResolver**: Base class for LLM-powered resolvers
-- **AnthropicTaskResolver**: Resolver for Anthropic's Claude models
-- **DatabaseTaskResolver**: Resolver for database operations
-- **FileOperationsResolver**: Resolver for file handling
-- **WorkflowResolver**: Resolver for chaining multiple resolvers
+- **BaseLLMTaskResolver**: Base class for LLM-powered task resolvers
+- **OpenAITaskResolver**: Resolver that uses OpenAI models
+- **AnthropicTaskResolver**: Resolver that uses Anthropic Claude models
+- **LLMTaskResolverFactory**: Factory for dynamically selecting LLM providers
 
-## Getting Started
+### Utility Resolvers
 
-### Installation
+- **DatabaseTaskResolver**: Handles SQL database operations
+- **FileOperationsResolver**: Manages file system operations
+- **LogicResolver**: Handles conditional logic and branching
+- **DataMapperResolver**: Transforms data between different formats
+
+## Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/BOSS.git
-cd BOSS
+# Install with Poetry (recommended)
+poetry add boss
 
-# Install dependencies using Poetry
-poetry install
+# Or with pip
+pip install boss
 ```
 
-### Basic Example
+## Quick Start
 
 ```python
-import asyncio
-from boss.core.task_models import Task
-from boss.core.task_resolver import TaskResolverMetadata
-from examples.chained_resolvers import DataExtractorResolver
+from boss.core import Task, TaskResolver
+from boss.core.openai_resolver import OpenAITaskResolver
 
-async def main():
-    # Create a task resolver with metadata
-    metadata = TaskResolverMetadata(
-        name="DataExtractor",
-        version="1.0.0",
-        description="Extracts data from structured input"
-    )
-    resolver = DataExtractorResolver(metadata)
-    
-    # Create a task
-    task = Task(
-        name="extract_user_info",
-        description="Extract specific user fields",
-        input_data={
-            "data": {
-                "username": "johndoe",
-                "email": "john@example.com",
-                "age": 30,
-                "address": "123 Main St"
-            },
-            "extract_fields": ["username", "email", "age"]
-        }
-    )
-    
-    # Process the task
-    result = await resolver(task)
-    
-    # Print the result
-    print(f"Task status: {result.status}")
-    print(f"Output: {result.output_data}")
+# Create a simple task
+task = Task(
+    input_data="Explain quantum computing in simple terms",
+    metadata={"resolver": "openai"}
+)
 
-if __name__ == "__main__":
-    asyncio.run(main())
+# Initialize a resolver
+resolver = OpenAITaskResolver(
+    model_name="gpt-4",
+    api_key="your-api-key"
+)
+
+# Execute the task
+result = resolver(task)
+
+# Check the result
+if result.status.is_success():
+    print(f"Task succeeded: {result.output_data}")
+else:
+    print(f"Task failed: {result.error}")
 ```
 
-## Examples
+## Example: Database Operations
 
-The `examples/` directory contains several examples demonstrating different capabilities of the BOSS framework:
+```python
+from boss.core import Task
+from boss.utility.database_resolver import DatabaseTaskResolver
 
-- `chained_resolvers.py`: Shows how to chain multiple resolvers together
-- `database_resolver.py`: Demonstrates database operations
-- `file_operations_resolver.py`: Shows file handling capabilities
-- `anthropic_example.py`: Demonstrates integration with Claude models
+# Create a database resolver
+db_resolver = DatabaseTaskResolver(
+    connection_string="sqlite:///example.db",
+    read_only=False
+)
 
-To run all examples:
+# Create a task to insert data
+task = Task(
+    input_data={
+        "operation": "INSERT",
+        "table": "users",
+        "data": {"name": "Jane Doe", "email": "jane@example.com", "age": 28}
+    }
+)
 
-```bash
-python examples/run_examples.py --examples all
+# Execute the task
+result = db_resolver(task)
+print(f"Insert result: {result.status}")
+
+# Create a task to query data
+query_task = Task(
+    input_data={
+        "operation": "SELECT",
+        "table": "users",
+        "columns": ["name", "email"],
+        "where": {"age": {"gt": 25}}
+    }
+)
+
+# Execute the query task
+query_result = db_resolver(query_task)
+print(f"Query result: {query_result.output_data}")
 ```
 
-See the [examples README](examples/README.md) for more details.
+## Example: File Operations
 
-## Development
+```python
+from boss.core import Task
+from boss.utility.file_operations_resolver import FileOperationsResolver
 
-### Project Structure
+# Create a file operations resolver
+file_resolver = FileOperationsResolver(
+    base_directory="./files",
+    max_file_size_mb=10
+)
 
+# Create a task to write data to a file
+write_task = Task(
+    input_data={
+        "operation": "WRITE",
+        "path": "data/report.json",
+        "content": {"statistics": {"users": 1250, "active": 850}},
+        "format": "json"
+    }
+)
+
+# Execute the write task
+write_result = file_resolver(write_task)
+print(f"Write result: {write_result.status}")
+
+# Create a task to read the file
+read_task = Task(
+    input_data={
+        "operation": "READ",
+        "path": "data/report.json",
+        "format": "json"
+    }
+)
+
+# Execute the read task
+read_result = file_resolver(read_task)
+print(f"Read result: {read_result.output_data}")
 ```
-BOSS/
-│
-├── boss/               # Core framework
-│   ├── core/           # Core components
-│   │   ├── task_models.py      # Task and TaskResult models
-│   │   ├── task_resolver.py    # Base TaskResolver class
-│   │   ├── task_status.py      # Task status enum
-│   │   ├── task_retry.py       # Retry logic
-│   │   ├── base_llm_resolver.py # Base LLM resolver
-│   │   ├── anthropic_resolver.py # Anthropic integration
-│   │   └── llm_factory.py      # LLM provider factory
-│   │
-│   └── utils/          # Utility functions
-│
-├── examples/           # Example implementations
-│   ├── chained_resolvers.py
-│   ├── database_resolver.py
-│   ├── file_operations_resolver.py
-│   ├── anthropic_example.py
-│   └── run_examples.py
-│
-├── tests/              # Test suite
-│
-├── pyproject.toml      # Project configuration
-└── README.md           # Project documentation
+
+## Example: Chaining Resolvers
+
+```python
+from boss.core import Task
+from boss.patterns.chained_resolver import ChainedResolver
+from boss.utility.database_resolver import DatabaseTaskResolver
+from boss.core.openai_resolver import OpenAITaskResolver
+
+# Create individual resolvers
+db_resolver = DatabaseTaskResolver(connection_string="sqlite:///example.db")
+llm_resolver = OpenAITaskResolver(model_name="gpt-3.5-turbo", api_key="your-api-key")
+
+# Create a chain of resolvers
+chain = ChainedResolver([
+    db_resolver,
+    llm_resolver
+])
+
+# Create a task that will be processed by the chain
+task = Task(
+    input_data={
+        "db_operation": {
+            "operation": "SELECT",
+            "table": "customer_feedback",
+            "columns": ["feedback"],
+            "limit": 10
+        },
+        "llm_prompt": "Summarize the following customer feedback: {db_result}"
+    }
+)
+
+# Execute the chained task
+result = chain(task)
+print(f"Chain result: {result.output_data}")
 ```
 
-### Contributing
+## Documentation
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+For full documentation, visit [https://boss-docs.example.com](https://boss-docs.example.com)
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for more details.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
