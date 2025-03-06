@@ -1,0 +1,73 @@
+# BOSS Project Context
+
+## Project Overview
+
+BOSS (Business Operating System As A Service) is a system with two main components:
+1. Lanager Framework - For task execution
+2. Lighthouse - For data storage and registry
+
+The system is built around the concept of TaskResolvers, which are modular components that solve specific tasks.
+
+## Core Architecture
+
+- TaskResolver: Base component that takes an inputTask and produces either a TaskResult or a TaskError
+- Mastery: Python code that orchestrates TaskResolvers in sequence or parallel
+- Lanager: Special TaskResolver that can compose and execute Masteries
+- Lighthouse: Storage and registry component with GraphQL, vector, and cache plugins
+
+## Code Style Guidelines
+
+1. **File Length**: Refactor code when a file reaches 150 lines
+2. **Package Management**: Always use Poetry for dependency management
+3. **Testing**: Each TaskResolver should have tests and a health check
+4. **Documentation**: TaskResolvers should be well-documented with input/output specifications
+5. **Error Handling**: All errors should be properly caught and handled
+
+## TaskResolver Development Workflow
+
+1. **Implementation**: Create the TaskResolver following the base interface
+2. **Testing**: Test the TaskResolver thoroughly and fix any bugs
+3. **Documentation**: 
+   - Update the [Implemented and Tested TaskResolvers](../../implemented_and_tested_so_far.md) document with test results
+   - Update the [TaskResolvers Tracker](../../task_resolvers_tracker.md) document to change the status to "Implemented"
+4. **Version Control**: Make a git commit documenting the TaskResolver implementation
+5. **Integration**: Register the TaskResolver in the appropriate registry
+
+After implementing each TaskResolver:
+- Run its health check and test with sample tasks
+- Document test results in the dedicated tracking document
+- Update the implementation status in the TaskResolvers tracker
+- Fix any bugs discovered during testing
+- Commit the changes with a descriptive message using the format: `[TaskResolver] Implement and test {TaskResolver name}`
+
+## Project Structure
+
+```
+boss/
+├── lanager/
+│   ├── core/         - Core Lanager framework components
+│   ├── models/       - Data models for tasks and results
+│   ├── resolvers/    - TaskResolver implementations
+│   └── masteries/    - Mastery implementations
+└── lighthouse/
+    ├── api/          - API interfaces
+    ├── core/         - Core Lighthouse components
+    ├── database/     - Database models and connections
+    └── registry/     - Registry for TaskResolvers and Masteries
+```
+
+## LLM Integration
+
+The project integrates with multiple LLM providers:
+- OpenAI (GPT models)
+- Anthropic (Claude models)
+- Together AI (various models)
+
+API keys are stored in .env file and should never be committed to version control.
+
+## Development Workflow
+
+1. Define models and interfaces first
+2. Implement basic functionality with tests
+3. Build more complex components
+4. Integration tests for the full system 

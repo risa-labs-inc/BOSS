@@ -1,0 +1,88 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Coverage
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+htmlcov/
+.tox/
+.pytest_cache/
+.mypy_cache/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.vscode/
+.atom/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+*.log
+logs/
+tmp/
+temp/
+implementations/*.py
+implementations/*/
+requirements/*.json
+run_history.json
+implementation_status.json
+metrics/
+diagnostics/
+clean_project.py
+
+# Poetry
+# Uncomment this if you want to exclude poetry.lock for development environments
+# poetry.lock
+.python-version
+
+# Distribution / packaging
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
