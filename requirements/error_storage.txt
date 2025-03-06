@@ -1,0 +1,6 @@
+# Requirements for ErrorStorageResolver
+
+# No external dependencies for basic file-based error storage
+# For database storage, uncomment the appropriate database client
+# sqlalchemy>=2.0.0  # For SQL database support
+# pymongo>=4.5.0     # For MongoDB support 

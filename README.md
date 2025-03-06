@@ -36,6 +36,30 @@ BOSS is a powerful framework for automating business operations through task res
 - **LogicResolver**: Handles conditional logic and branching
 - **DataMapperResolver**: Transforms data between different formats
 
+## Available Resolvers
+
+BOSS includes a variety of task resolvers for different purposes:
+
+### Core Resolvers
+- **TaskResolver**: Base class for all resolvers
+- **HealthCheckResolver**: Checks the health of other resolvers
+
+### LLM Resolvers
+- **OpenAITaskResolver**: Integration with OpenAI models
+- **AnthropicTaskResolver**: Integration with Anthropic Claude models
+
+### Utility Resolvers
+- **DataMapperResolver**: Transforms data between different formats
+- **LogicResolver**: Handles conditional logic and branching
+- **LanguageTaskResolver**: Handles language operations
+- **APIWrapperResolver**: Makes API calls to external services with support for authentication, caching, and rate limiting
+- **ErrorStorageResolver**: Stores and categorizes errors for later analysis and reporting
+- **TaskPrioritizationResolver**: Assigns priority scores to tasks based on various factors like deadlines, age, and dependencies
+
+### Operations Resolvers
+- **DatabaseTaskResolver**: Handles database operations
+- **FileOperationsResolver**: Handles file system operations
+
 ## Installation
 
 ```bash
@@ -200,4 +224,15 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Examples
+
+The `examples` directory contains example scripts demonstrating how to use various components:
+
+- `standalone_language_example.py`: Shows how to use the LanguageTaskResolver
+- `evolver_example.py`: Demonstrates the TaskResolverEvolver
+- `file_operations_resolver.py`: Shows how to use the FileOperationsResolver
+- `api_wrapper_example.py`: Demonstrates making API calls with the APIWrapperResolver
+- `error_storage_example.py`: Shows how to store and analyze errors with the ErrorStorageResolver
+- `task_prioritization_example.py`: Shows how to prioritize tasks with the TaskPrioritizationResolver 

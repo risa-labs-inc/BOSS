@@ -23,9 +23,11 @@ This document tracks the testing results for all implemented TaskResolvers in th
 | FileOperationsResolver | 2024-05-15 | 🟢 Passed | 🟢 Passed | File read/write operations, list directory, move/copy/delete files | Type conversion in size_bytes assignment | Fixed | - | 3 |
 | TaskResolverRegistry | 2024-05-19 | 🟡 Partial | 🟡 Partial | Registry entry, resolver search by name/version/tag, resolver retrieval, registration/unregistration | Type compatibility for version keys | In Progress | - | 3 |
 | MasteryRegistry | 2024-05-15 | 🟡 Partial | 🟡 Partial | Mastery definition storage, retrieval by name/version/tag, search capability | Type compatibility for version keys | In Progress | - | 3 |
-| HealthCheckResolver | 2024-05-19 | 🟡 Partial | 🟡 Partial | Single resolver health check, all resolvers check, health status reporting | Type annotations for TaskError and async methods | Fixed | - | 3 |
-| VectorSearchResolver | 2024-05-19 | 🟡 Partial | 🟡 Partial | Vector similarity search, document indexing, metadata filtering, batch operations | Type annotations for NumPy dependencies | In Progress | - | 3 |
-| MasteryExecutor | 2024-05-20 | 🟡 Partial | 🟡 Partial | Mastery execution, state management, execution history tracking | Async execution handling, TaskResult model compatibility | In Progress | - | 3 |
+| HealthCheckResolver | 2024-05-19 | 🟡 Partial | 🟡 Partial | Check health of a specific resolver, Check health of all resolvers, Get health status of specific resolver, Get health history of a resolver | Type annotations for TaskError parameters, Conversion between async and sync methods, Proper error type handling | Fixed | - | 3 |
+| VectorSearchResolver | 2024-05-19 | 🟡 Partial | 🟡 Partial | Index document with vector embedding, Search for similar documents, Delete document, Batch index multiple documents, Filter search results by metadata, Upsert document | Dependency management for vector libraries (numpy, faiss, sentence-transformers), Type annotations for external libraries, Fallback embedding generation needs better determinism | In Progress | - | 3 |
+| MasteryExecutor | 2024-05-20 | 🟡 Partial | 🟡 Partial | Execute existing mastery, Execute non-existent mastery, Get execution state, Get execution history, Get filtered execution history | Async execution handling with potentially synchronous masteries, Compatibility with TaskResult model, Type annotations for unit tests | In Progress | - | 3 |
+| LanguageTaskResolver | 2024-05-25 | 🟢 Passed | 🟡 Partial | Grammar correction, text summarization, translation, sentiment analysis, text analysis | Type compatibility issues in TextAnalyzer and SentimentAnalyzer, minor regex optimizations needed | In Progress | - | 3 |
+| TaskResolverEvolver | 2024-05-26 | 🟡 Partial | 🟡 Partial | Evolve resolver, Check evolution eligibility, Record failure, Get evolution history, Get failed tasks | Pydantic compatibility for v1 and v2, TaskResolverRegistry method naming | Fixed | - | 3 |
 
 ## Detailed Test Reports
 
@@ -299,6 +301,71 @@ This document tracks the testing results for all implemented TaskResolvers in th
 **Retry Configuration**: None (execution is handled by individual masteries)
 
 **Notes and Observations**: The MasteryExecutor provides a flexible system for executing masteries with comprehensive state tracking and history. It integrates well with the MasteryRegistry for discovery and statistics tracking. The implementation includes safeguards against execution failures and provides detailed execution reports.
+
+### LanguageTaskResolver
+
+**Test Date**: 2024-05-25
+
+**Health Check Results**: Passed - Health check confirms all language operations are available and functioning.
+
+**Sample Tasks Used**:
+1. Grammar correction task with common errors
+2. Text summarization with varying text lengths
+3. Translation between English and Spanish
+4. Sentiment analysis of positive, negative, and neutral text
+5. Text analysis for readability and statistics
+6. Error handling with invalid operations
+
+**Issues Found**:
+- Type compatibility issue in SentimentAnalyzer (float vs int score calculation)
+- Missing library stubs for some dependencies
+- Minor regex optimization opportunities in grammar correction
+
+**Fix Status**: In Progress - Type compatibility issues being addressed
+
+**Evolution History**: Initial implementation
+
+**Retry Configuration**: None (language operations are not retried)
+
+**Notes and Observations**: 
+The LanguageTaskResolver provides a comprehensive set of language processing capabilities without requiring external services. The modular design with separate operation classes allows for easy extension. The grammar correction and translation are rule-based and intentionally limited but provide a solid foundation that can be extended or replaced with more sophisticated implementations.
+
+Key strengths include:
+- Modular architecture with abstracted operations
+- Comprehensive error handling
+- Support for parameterized operations
+- Solid performance on basic language tasks
+
+Further improvements planned:
+- Add more sophisticated summarization algorithms
+- Expand translation dictionary
+- Improve sentiment analysis with machine learning
+- Integrate with external language services as optional fallbacks
+
+### TaskResolverEvolver
+
+**Test Date**: 2024-05-26
+
+**Health Check Results**: Partial - Basic functionality works but comprehensive testing needed.
+
+**Sample Tasks Used**:
+1. Evolve resolver
+2. Check evolution eligibility
+3. Record failure
+4. Get evolution history
+5. Get failed tasks
+
+**Issues Found**:
+- Pydantic compatibility for v1 and v2
+- TaskResolverRegistry method naming
+
+**Fix Status**: Fixed - All issues addressed
+
+**Evolution History**: Initial implementation
+
+**Retry Configuration**: None (evolution operations are not retried)
+
+**Notes and Observations**: Provides comprehensive evolution management for TaskResolvers. The implementation includes safeguards against evolution failures and provides detailed evolution reports.
 
 ## Testing Framework Guidelines
 

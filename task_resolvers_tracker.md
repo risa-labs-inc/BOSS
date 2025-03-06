@@ -11,8 +11,8 @@ This document tracks the implementation status of all TaskResolvers in the BOSS 
 | TaskRetryManager | Implemented | Tested | 2023-07-02 | Handles retry logic and backoff strategies for failed tasks. |
 | TaskResolverRegistry | Implemented | Not Tested | 2024-05-19 | Registry for tracking all available TaskResolvers with versioning and discovery capabilities. |
 | MasteryRegistry | Implemented | Not Tested | 2024-05-15 | Registry for tracking all available Masteries with versioning and discovery capabilities. |
-| HealthCheckResolver | Implemented | Not Tested | 2024-05-19 | Performs health checks on other resolvers and provides health status information. |
-| VectorSearchResolver | Implemented | Not Tested | 2024-05-19 | Provides semantic search capabilities using vector embeddings. Supports multiple vector DBs and embedding models. |
+| HealthCheckResolver | Implemented | Tested | 2024-05-22 | Performs health checks on other resolvers and provides health status information. |
+| VectorSearchResolver | Implemented | Tested | 2024-05-22 | Provides semantic search capabilities using vector embeddings. Supports multiple vector DBs and embedding models. |
 
 ## LLM Components
 
@@ -31,7 +31,7 @@ This document tracks the implementation status of all TaskResolvers in the BOSS 
 |-----------|--------|---------------|---------------------|-------|
 | MasteryComposer | Implemented | Not Tested | 2023-08-10 | Composes complex workflows from multiple TaskResolvers. |
 | MasteryExecutor | Implemented | Not Tested | 2024-05-20 | Executes Masteries with proper error handling and state management. |
-| TaskResolverEvolver | Not Started | Not Tested | | Evolves TaskResolvers based on performance metrics. |
+| TaskResolverEvolver | Implemented | Not Tested | 2024-05-26 | Evolves TaskResolvers based on performance metrics and failure patterns. |
 
 ## Utility Components
 
@@ -39,7 +39,7 @@ This document tracks the implementation status of all TaskResolvers in the BOSS 
 |-----------|--------|---------------|---------------------|-------|
 | DataMapperResolver | Implemented | Not Tested | 2023-08-15 | Transforms data between different formats (JSON, CSV, XML, etc.). |
 | LogicResolver | Implemented | Not Tested | 2023-08-15 | Handles conditional logic and branching operations. |
-| LanguageTaskResolver | Not Started | Not Tested | | Handles language-specific operations (translation, grammar correction, etc.). |
+| LanguageTaskResolver | Implemented | Not Tested | 2024-05-25 | Handles language-specific operations (translation, grammar correction, text analysis). |
 | OrganizationValuesResolver | Not Started | Not Tested | | Ensures outputs align with organization values and guidelines. |
 | HistoricalDataResolver | Not Started | Not Tested | | Provides access to historical data for context. |
 | ContextProviderResolver | Not Started | Not Tested | | Manages and provides relevant context to other resolvers. |
@@ -51,9 +51,9 @@ This document tracks the implementation status of all TaskResolvers in the BOSS 
 | DatabaseTaskResolver | Implemented | Tested | 2023-07-10 | Handles database operations (CRUD). |
 | FileOperationsResolver | Implemented | Tested | 2023-07-15 | Handles file system operations. |
 | WorklistManagerResolver | Not Started | Not Tested | | Manages work items and prioritization. |
-| TaskPrioritizationResolver | Not Started | Not Tested | | Assigns priority scores to tasks based on various factors. |
-| ErrorStorageResolver | Not Started | Not Tested | | Stores and categorizes errors for later analysis. |
-| APIWrapperResolver | Not Started | Not Tested | | Generic wrapper for API calls. |
+| TaskPrioritizationResolver | Implemented | Not Tested | 2024-06-03 | Assigns priority scores to tasks based on various configurable factors including task age, deadlines, dependencies, and user importance. |
+| ErrorStorageResolver | Implemented | Not Tested | 2024-06-02 | Stores and categorizes errors for later analysis. Supports file and database storage with error categorization and statistics. |
+| APIWrapperResolver | Implemented | Not Tested | 2024-06-01 | Generic wrapper for API calls. Supports various authentication methods, request types, caching, and rate limiting. |
 
 ## Advanced Components (Phase 2)
 
