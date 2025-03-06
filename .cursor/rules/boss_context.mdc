@@ -1,3 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
 # BOSS Project Context
 
 ## Project Overview
@@ -28,8 +33,8 @@ The system is built around the concept of TaskResolvers, which are modular compo
 1. **Implementation**: Create the TaskResolver following the base interface
 2. **Testing**: Test the TaskResolver thoroughly and fix any bugs
 3. **Documentation**: 
-   - Update the [Implemented and Tested TaskResolvers](../../implemented_and_tested_so_far.md) document with test results
-   - Update the [TaskResolvers Tracker](../../task_resolvers_tracker.md) document to change the status to "Implemented"
+   - Update the [Implemented and Tested TaskResolvers](mdc:../../implemented_and_tested_so_far.md) document with test results
+   - Update the [TaskResolvers Tracker](mdc:../../task_resolvers_tracker.md) document to change the status to "Implemented"
 4. **Version Control**: Make a git commit documenting the TaskResolver implementation
 5. **Integration**: Register the TaskResolver in the appropriate registry
 

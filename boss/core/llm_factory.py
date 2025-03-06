@@ -57,7 +57,7 @@ class LLMTaskResolverFactory:
         Try to import and register the Together AI provider if available.
         """
         try:
-            from boss.core.together_resolver import TogetherAITaskResolver
+            from boss.core.together_ai_resolver import TogetherAITaskResolver
             self.register_provider("together", TogetherAITaskResolver)
         except ImportError:
             self.logger.debug("Together AI provider not available")

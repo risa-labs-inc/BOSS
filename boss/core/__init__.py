@@ -18,6 +18,23 @@ from boss.core.registry import TaskResolverRegistry, RegistryEntry
 from boss.core.health_check_resolver import HealthCheckResolver, HealthCheckResult
 from boss.core.vector_search_resolver import VectorSearchResolver, VectorSearchResult
 
+# Import LLM resolvers
+from boss.core.openai_resolver import OpenAITaskResolver
+from boss.core.anthropic_resolver import AnthropicTaskResolver
+
+# Try to import optional resolvers
+try:
+    from boss.core.together_ai_resolver import TogetherAITaskResolver
+    HAS_TOGETHER_AI = True
+except ImportError:
+    HAS_TOGETHER_AI = False
+
+try:
+    from boss.core.xai_resolver import XAITaskResolver
+    HAS_XAI = True
+except ImportError:
+    HAS_XAI = False
+
 __all__ = [
     # Task models
     "Task",
@@ -40,6 +57,8 @@ __all__ = [
     "BaseLLMTaskResolver",
     "LLMResponse",
     "LLMTaskResolverFactory",
+    "OpenAITaskResolver",
+    "AnthropicTaskResolver",
     
     # Mastery components
     "MasteryComposer",
@@ -61,3 +80,10 @@ __all__ = [
     "VectorSearchResolver",
     "VectorSearchResult",
 ]
+
+# Add optional resolvers to __all__ if available
+if HAS_TOGETHER_AI:
+    __all__.append("TogetherAITaskResolver")
+
+if HAS_XAI:
+    __all__.append("XAITaskResolver")

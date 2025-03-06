@@ -1,0 +1,16 @@
+---
+description: Always verify and track the latest versions of dependencies
+globs: ['**/pyproject.toml', '**/requirements.txt', '**/poetry.lock']
+alwaysApply: true
+---
+# Dependency Version Tracking Rule
+
+Always search for the latest version of a package before installing it with Poetry.
+
+## Quick Reference
+
+1. Check latest version: `./scripts/poetry_latest.sh check [package]`
+2. Install latest version: `./scripts/poetry_latest.sh install [package]`
+3. Update dependency tracker: `docs/dependency_tracker.md`
+4. Run full audit: `./scripts/poetry_latest.sh audit`
+

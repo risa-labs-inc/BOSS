@@ -35,13 +35,15 @@ async def run_examples(selected_examples: Optional[List[str]] = None) -> None:
         "chained": "chained_resolvers",
         "database": "database_resolver",
         "file": "file_operations_resolver",
-        # Only run anthropic example if API key is available
-        "anthropic": "anthropic_example"
+        # Only run examples if API keys are available
+        "anthropic": "anthropic_example",
+        "together": "together_ai_resolver",
+        "xai": "xai_resolver"
     }
     
-    # If no examples are specified, run all except anthropic
+    # If no examples are specified, run all except those requiring API keys
     if not selected_examples:
-        selected_examples = [ex for ex in examples.keys() if ex != "anthropic"]
+        selected_examples = [ex for ex in examples.keys() if ex not in ["anthropic", "together", "xai"]]
     
     for example_name in selected_examples:
         if example_name not in examples:
@@ -55,6 +57,18 @@ async def run_examples(selected_examples: Optional[List[str]] = None) -> None:
         if example_name == "anthropic" and not os.environ.get("ANTHROPIC_API_KEY"):
             logger.error("ANTHROPIC_API_KEY not set. Skipping Anthropic example.")
             logger.error("To run this example, set the environment variable: export ANTHROPIC_API_KEY=your_api_key")
+            continue
+        
+        # Special handling for Together AI example
+        if example_name == "together" and not os.environ.get("TOGETHER_API_KEY"):
+            logger.error("TOGETHER_API_KEY not set. Skipping Together AI example.")
+            logger.error("To run this example, set the environment variable: export TOGETHER_API_KEY=your_api_key")
+            continue
+        
+        # Special handling for xAI example
+        if example_name == "xai" and not os.environ.get("XAI_API_KEY"):
+            logger.error("XAI_API_KEY not set. Skipping xAI example.")
+            logger.error("To run this example, set the environment variable: export XAI_API_KEY=your_api_key")
             continue
         
         try:
@@ -84,7 +98,7 @@ def main() -> None:
     parser.add_argument(
         "--examples", 
         nargs="+", 
-        choices=["chained", "database", "file", "anthropic", "all"],
+        choices=["chained", "database", "file", "anthropic", "together", "xai", "all"],
         help="Specify which examples to run"
     )
     parser.add_argument(
@@ -97,7 +111,7 @@ def main() -> None:
     
     # Handle "all" option
     if args.examples and "all" in args.examples:
-        examples_to_run = ["chained", "database", "file", "anthropic"]
+        examples_to_run = ["chained", "database", "file", "anthropic", "together", "xai"]
     else:
         examples_to_run = args.examples
     

@@ -7,8 +7,7 @@ This directory contains all trackers for the BOSS (Business Operations System So
 | Tracker | Description | Last Updated |
 |---------|-------------|--------------|
 | [Master Development Tracker](master_development_tracker.md) | High-level overview of all development activities | 2024-06-03 |
-| [Task Resolvers Tracker](task_resolvers_tracker.md) | Status of all TaskResolver components in the BOSS framework | 2024-06-03 |
-| [Task Resolvers Testing Details](task_resolvers_testing_details.md) | Detailed testing information for each TaskResolver | 2024-06-03 |
+| [Task Resolvers Tracker](task_resolvers_tracker.md) | Status of all TaskResolver components in the BOSS framework, including implementation progress and detailed testing information | 2024-06-03 |
 | [Testing Completion Tracker](testing_completion_tracker.md) | Status of testing efforts for BOSS components | 2024-06-03 |
 | [LLM Integration Tracker](llm_integration_tracker.md) | Progress of implementing additional LLM provider integrations | 2024-06-03 |
 | [Code Refactoring Tracker](code_refactoring_tracker.md) | Progress of code refactoring efforts for large files | 2024-06-03 |
