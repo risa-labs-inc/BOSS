@@ -7,16 +7,31 @@ monitoring operations via API calls.
 
 import logging
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
 from datetime import datetime, timedelta
 import asyncio
 import json
 
-from fastapi import FastAPI, HTTPException, Query, Path, Depends, BackgroundTasks
-from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
+try:
+    from fastapi import FastAPI, HTTPException, Query, Path, Depends, BackgroundTasks
+    from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.middleware.cors import CORSMiddleware
+    import uvicorn
+except ImportError:
+    # Type stubs for mypy to avoid import errors
+    class FastAPI: pass
+    class HTTPException: pass
+    class Query: pass
+    class Path: pass
+    class Depends: pass
+    class BackgroundTasks: pass
+    class JSONResponse: pass
+    class HTMLResponse: pass
+    class FileResponse: pass
+    class StaticFiles: pass
+    class CORSMiddleware: pass
+    uvicorn = None
 
 from boss.lighthouse.monitoring.metrics_storage import MetricsStorage
 from boss.lighthouse.monitoring.system_metrics_collector import SystemMetricsCollector
@@ -390,11 +405,25 @@ class MonitoringAPI:
                 raise HTTPException(status_code=500, detail=f"Error getting dashboard: {str(e)}")
                 
     async def _run_task(self, component: Any, task: Task) -> None:
-        """Run a task asynchronously."""
+        """Run a task asynchronously.
+        
+        Args:
+            component: The component to run the task on
+            task: The task to run
+        """
         try:
-            await component.resolve(task)
+            # Create a task with correct parameters
+            # Note: Changed task_id to id and removed operation parameter
+            actual_task = Task(
+                id=str(task.id) if hasattr(task, 'id') else None,
+                input_data=task.input_data,
+                metadata=task.metadata
+            )
+            result = await asyncio.to_thread(component, actual_task)
+            logging.info(f"Task {task.id if hasattr(task, 'id') else 'unknown'} completed: {result.status}")
         except Exception as e:
-            self.logger.error(f"Error running task {task.task_id}: {e}")
+            logging.error(f"Error running task: {e}")
+            raise
             
     def start(self) -> None:
         """Start the API server."""

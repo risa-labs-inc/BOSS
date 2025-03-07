@@ -55,7 +55,7 @@ class MonitoringResolver(BaseTaskResolver):
         
         # Set up logging
         self.logger = logging.getLogger("boss.lighthouse.monitoring")
-        
+    
         # Initialize component variables with Optional types
         self.system_metrics_collector: Optional[SystemMetricsCollector] = None
         self.component_health_checker: Optional[ComponentHealthChecker] = None
@@ -133,7 +133,7 @@ class MonitoringResolver(BaseTaskResolver):
                     status=TaskStatus.ERROR,
                     output_data={"error": "Missing 'operation' field in input data"}
                 )
-            
+                
             # Route to the appropriate refactored component if available
             if REFACTORED_COMPONENTS_AVAILABLE:
                 # System metrics operations
@@ -277,9 +277,9 @@ class MonitoringResolver(BaseTaskResolver):
         """
         self.logger.warning("Using legacy implementation of collect_system_metrics")
         # Legacy implementation would go here
-        return TaskResult(
-            task_id=task.id,
-            status=TaskStatus.ERROR,
+            return TaskResult(
+                task_id=task.id,
+                status=TaskStatus.ERROR,
             output_data={"error": "Legacy implementation not available"}
         )
     
@@ -287,8 +287,8 @@ class MonitoringResolver(BaseTaskResolver):
         """Legacy implementation of check_component_health."""
         self.logger.warning("Using legacy implementation of check_component_health")
         # Legacy implementation would go here
-        return TaskResult(
-            task_id=task.id,
+            return TaskResult(
+                task_id=task.id,
             status=TaskStatus.ERROR,
             output_data={"error": "Legacy implementation not available"}
         )
@@ -297,9 +297,9 @@ class MonitoringResolver(BaseTaskResolver):
         """Legacy implementation of get_performance_metrics."""
         self.logger.warning("Using legacy implementation of get_performance_metrics")
         # Legacy implementation would go here
-        return TaskResult(
-            task_id=task.id,
-            status=TaskStatus.ERROR,
+            return TaskResult(
+                task_id=task.id,
+                status=TaskStatus.ERROR,
             output_data={"error": "Legacy implementation not available"}
         )
     
@@ -339,7 +339,7 @@ class MonitoringResolver(BaseTaskResolver):
                 )
                 
             alert_type = task.input_data.get("alert_type")
-            if not alert_type:
+        if not alert_type:
                 return TaskResult(
                     task_id=task.id,
                     status=TaskStatus.ERROR,
@@ -411,11 +411,11 @@ class MonitoringResolver(BaseTaskResolver):
             return await self.alert_manager.resolve(new_task)
             
         self.logger.warning("Using legacy alert listing - consider using AlertManager")
-        
-        return TaskResult(
-            task_id=task.id,
-            status=TaskStatus.COMPLETED,
-            output_data={
+            
+            return TaskResult(
+                task_id=task.id,
+                status=TaskStatus.COMPLETED,
+                output_data={
                 "alerts": [],
                 "message": "Legacy alert listing not implemented. Use AlertManager instead."
             }
@@ -425,11 +425,11 @@ class MonitoringResolver(BaseTaskResolver):
         """Legacy implementation of clear_old_metrics."""
         self.logger.warning("Using legacy implementation of clear_old_metrics")
         # Legacy implementation would go here
-        return TaskResult(
-            task_id=task.id,
-            status=TaskStatus.ERROR,
+            return TaskResult(
+                task_id=task.id,
+                status=TaskStatus.ERROR,
             output_data={"error": "Legacy implementation not available"}
-        )
+            )
     
     async def _legacy_handle_update_alert_thresholds(self, task: Task) -> TaskResult:
         """Legacy handler for the update_alert_thresholds operation.
@@ -447,12 +447,12 @@ class MonitoringResolver(BaseTaskResolver):
                 
                 # Store thresholds in the performance metrics tracker
                 self.performance_metrics_tracker.performance_thresholds = thresholds
-                
-                return TaskResult(
-                    task_id=task.id,
-                    status=TaskStatus.COMPLETED,
-                    output_data={
-                        "message": "Alert thresholds updated successfully",
+        
+        return TaskResult(
+            task_id=task.id,
+            status=TaskStatus.COMPLETED,
+            output_data={
+                "message": "Alert thresholds updated successfully",
                         "thresholds": thresholds
                     }
                 )

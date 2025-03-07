@@ -6,16 +6,17 @@ from various monitoring components.
 
 import logging
 import json
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional
 from datetime import datetime, timedelta
 import os
+import jinja2
 
-from boss.core.task_models import Task, TaskResult, TaskStatus, TaskMetadata
-from boss.core.task_resolver import TaskResolverMetadata
+from boss.core.task_models import Task, TaskResult, TaskStatus
 from boss.lighthouse.monitoring.base_monitoring import BaseMonitoring
 from boss.lighthouse.monitoring.chart_generator import ChartGenerator
 from boss.lighthouse.monitoring.metrics_storage import MetricsStorage
 from boss.lighthouse.monitoring.dashboard_components import DashboardTemplateRenderer, DashboardDataProcessor
+
 
 class DashboardGenerator(BaseMonitoring):
     """Component for generating monitoring dashboards and reports.
@@ -34,7 +35,6 @@ class DashboardGenerator(BaseMonitoring):
     
     def __init__(
         self,
-        resolver_metadata: TaskResolverMetadata,
         data_dir: str,
         metrics_storage: Optional[MetricsStorage] = None,
         chart_generator: Optional[ChartGenerator] = None
@@ -42,17 +42,17 @@ class DashboardGenerator(BaseMonitoring):
         """Initialize the DashboardGenerator.
         
         Args:
-            resolver_metadata: TaskResolverMetadata for initialization
             data_dir: Directory for storing dashboard files
             metrics_storage: Optional MetricsStorage instance for retrieving metrics
             chart_generator: Optional ChartGenerator instance for creating charts
         """
-        super().__init__(resolver_metadata, component_name="dashboard_generator")
+        # Initialize without typical resolver metadata since we're not using it
+        super().__init__(None, component_name="dashboard_generator")
         
         # Set up component-specific attributes
         self.logger = logging.getLogger("boss.lighthouse.monitoring.dashboard_generator")
         
-        # Set up data directory
+        # Override data_dir since we're using a custom initialization
         self.data_dir = data_dir
         os.makedirs(self.data_dir, exist_ok=True)
         
@@ -108,7 +108,7 @@ class DashboardGenerator(BaseMonitoring):
         
         self.logger.info("DashboardGenerator initialized")
     
-    async def __call__(self, task: Task) -> TaskResult:
+    def __call__(self, task: Task) -> TaskResult:
         """Generate dashboards and reports.
         
         Args:
@@ -121,17 +121,17 @@ class DashboardGenerator(BaseMonitoring):
         
         try:
             if operation == "generate_dashboard":
-                return await self._handle_generate_dashboard(task)
+                return self._handle_generate_dashboard(task)
             elif operation == "generate_report":
-                return await self._handle_generate_report(task)
+                return self._handle_generate_report(task)
             elif operation == "get_dashboard_url":
-                return await self._handle_get_dashboard_url(task)
+                return self._handle_get_dashboard_url(task)
             elif operation == "list_dashboards":
-                return await self._handle_list_dashboards(task)
+                return self._handle_list_dashboards(task)
             elif operation == "health_check":
-                return await self._handle_health_check(task)
+                return self._handle_health_check(task)
             elif operation == "generate_custom_dashboard":
-                return await self._handle_generate_custom_dashboard(task)
+                return self._handle_generate_custom_dashboard(task)
             else:
                 return TaskResult(
                     task_id=task.id,
@@ -146,7 +146,7 @@ class DashboardGenerator(BaseMonitoring):
                 output_data={"error": str(e)}
             )
     
-    async def _handle_generate_dashboard(self, task: Task) -> TaskResult:
+    def _handle_generate_dashboard(self, task: Task) -> TaskResult:
         """Handle generating a dashboard.
         
         Args:
@@ -175,10 +175,10 @@ class DashboardGenerator(BaseMonitoring):
             config["title"] = title
         
         # Get component data
-        component_data = await self._get_component_data(dashboard_type, time_window)
+        component_data = self._get_component_data(dashboard_type, time_window)
         
         # Generate charts
-        charts = await self._generate_component_charts(dashboard_type, component_data)
+        charts = self._generate_component_charts(dashboard_type, component_data)
         
         # Generate dashboard HTML
         dashboard_id = f"{dashboard_type}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -214,7 +214,7 @@ class DashboardGenerator(BaseMonitoring):
             }
         )
     
-    async def _handle_generate_custom_dashboard(self, task: Task) -> TaskResult:
+    def _handle_generate_custom_dashboard(self, task: Task) -> TaskResult:
         """Handle generating a custom dashboard.
         
         Args:
@@ -265,7 +265,7 @@ class DashboardGenerator(BaseMonitoring):
             }
         )
     
-    async def _get_component_data(self, dashboard_type: str, time_window: str) -> Dict[str, Any]:
+    def _get_component_data(self, dashboard_type: str, time_window: str) -> Dict[str, Any]:
         """Get data for dashboard components.
         
         Args:
@@ -281,17 +281,17 @@ class DashboardGenerator(BaseMonitoring):
         
         # Get data based on dashboard type
         if dashboard_type == "system":
-            return await self._get_system_data(start_time, end_time)
+            return self._get_system_data(start_time, end_time)
         elif dashboard_type == "health":
-            return await self._get_health_data()
+            return self._get_health_data()
         elif dashboard_type == "alerts":
-            return await self._get_alerts_data(start_time, end_time)
+            return self._get_alerts_data(start_time, end_time)
         elif dashboard_type == "performance":
-            return await self._get_performance_data(start_time, end_time)
+            return self._get_performance_data(start_time, end_time)
         else:
             return {}
     
-    async def _generate_component_charts(self, dashboard_type: str, component_data: Dict[str, Any]) -> Dict[str, str]:
+    def _generate_component_charts(self, dashboard_type: str, component_data: Dict[str, Any]) -> Dict[str, str]:
         """Generate charts for dashboard components.
         
         Args:
@@ -305,17 +305,17 @@ class DashboardGenerator(BaseMonitoring):
         
         # Generate charts based on dashboard type
         if dashboard_type == "system":
-            charts.update(await self._generate_system_charts(component_data))
+            charts.update(self._generate_system_charts(component_data))
         elif dashboard_type == "health":
-            charts.update(await self._generate_health_charts(component_data))
+            charts.update(self._generate_health_charts(component_data))
         elif dashboard_type == "alerts":
-            charts.update(await self._generate_alerts_charts(component_data))
+            charts.update(self._generate_alerts_charts(component_data))
         elif dashboard_type == "performance":
-            charts.update(await self._generate_performance_charts(component_data))
+            charts.update(self._generate_performance_charts(component_data))
         
         return charts
     
-    async def _handle_generate_report(self, task: Task) -> TaskResult:
+    def _handle_generate_report(self, task: Task) -> TaskResult:
         """Handle generating a report.
         
         Args:
@@ -344,10 +344,10 @@ class DashboardGenerator(BaseMonitoring):
             config["title"] = title
         
         # Get component data
-        component_data = await self._get_component_data(report_type, time_window)
+        component_data = self._get_component_data(report_type, time_window)
         
         # Generate charts
-        charts = await self._generate_component_charts(report_type, component_data)
+        charts = self._generate_component_charts(report_type, component_data)
         
         # Generate report HTML
         report_id = f"{report_type}_report_{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -383,7 +383,7 @@ class DashboardGenerator(BaseMonitoring):
             }
         )
     
-    async def _handle_get_dashboard_url(self, task: Task) -> TaskResult:
+    def _handle_get_dashboard_url(self, task: Task) -> TaskResult:
         """Handle getting a dashboard URL.
         
         Args:
@@ -430,7 +430,7 @@ class DashboardGenerator(BaseMonitoring):
             }
         )
     
-    async def _handle_list_dashboards(self, task: Task) -> TaskResult:
+    def _handle_list_dashboards(self, task: Task) -> TaskResult:
         """Handle listing available dashboards.
         
         Args:
@@ -473,10 +473,10 @@ class DashboardGenerator(BaseMonitoring):
         return TaskResult(
             task_id=task.id,
             status=TaskStatus.COMPLETED,
-            output_data={"dashboards": dashboards}
+            output_data=dashboards
         )
     
-    async def _handle_health_check(self, task: Task) -> TaskResult:
+    def _handle_health_check(self, task: Task) -> TaskResult:
         """Handle health check task.
         
         Args:
@@ -485,7 +485,7 @@ class DashboardGenerator(BaseMonitoring):
         Returns:
             TaskResult with health check status
         """
-        is_healthy = await self.health_check()
+        is_healthy = self.health_check()
         
         return TaskResult(
             task_id=task.id,
@@ -493,7 +493,7 @@ class DashboardGenerator(BaseMonitoring):
             output_data={"healthy": is_healthy}
         )
     
-    async def health_check(self) -> bool:
+    def health_check(self) -> bool:
         """Perform a health check.
         
         Returns:
@@ -556,7 +556,7 @@ class DashboardGenerator(BaseMonitoring):
         else:
             raise ValueError(f"Invalid time window unit: {unit}")
     
-    async def _get_system_data(self, start_time: datetime, end_time: datetime) -> Dict[str, Any]:
+    def _get_system_data(self, start_time: datetime, end_time: datetime) -> Dict[str, Any]:
         """Get system metrics data.
         
         Args:
@@ -568,21 +568,19 @@ class DashboardGenerator(BaseMonitoring):
         """
         # Get system metrics
         metrics_task = Task(
-            id=f"get_system_metrics_{datetime.now().strftime('%Y%m%d%H%M%S')}",
-            name="get_system_metrics",
             input_data={
                 "operation": "get_metrics",
                 "metrics_type": "system",
                 "start_time": start_time.isoformat(),
                 "end_time": end_time.isoformat()
             },
-            metadata=cast(TaskMetadata, {"source": "dashboard_generator"})
+            metadata={"source": "dashboard_generator"}
         )
         
-        metrics_result = await self.metrics_storage.__call__(metrics_task)
+        metrics_result = self.metrics_storage(metrics_task)
         
         if not hasattr(metrics_result, "status") or metrics_result.status != TaskStatus.COMPLETED:
-            error_msg = getattr(metrics_result, "output_data", {}).get("error", "Unknown error")
+            error_msg = getattr(metrics_result, "error", "Unknown error")
             self.logger.error(f"Failed to get system metrics: {error_msg}")
             return {}
         
@@ -591,7 +589,7 @@ class DashboardGenerator(BaseMonitoring):
         # Process metrics data
         return DashboardDataProcessor.process_system_metrics(system_metrics)
     
-    async def _get_health_data(self) -> Dict[str, Any]:
+    def _get_health_data(self) -> Dict[str, Any]:
         """Get component health data.
         
         Returns:
@@ -599,23 +597,21 @@ class DashboardGenerator(BaseMonitoring):
         """
         # Get component health
         health_task = Task(
-            id=f"get_component_health_{datetime.now().strftime('%Y%m%d%H%M%S')}",
-            name="get_component_health",
             input_data={"operation": "get_component_health"},
-            metadata=cast(TaskMetadata, {"source": "dashboard_generator"})
+            metadata={"source": "dashboard_generator"}
         )
         
-        health_result = await self.metrics_storage.__call__(health_task)
+        health_result = self.metrics_storage(health_task)
         
         if not hasattr(health_result, "status") or health_result.status != TaskStatus.COMPLETED:
-            error_msg = getattr(health_result, "output_data", {}).get("error", "Unknown error")
+            error_msg = getattr(health_result, "error", "Unknown error")
             self.logger.error(f"Failed to get component health: {error_msg}")
             return {}
         
         # Process health data
         return DashboardDataProcessor.process_health_data(health_result.output_data)
     
-    async def _get_alerts_data(self, start_time: datetime, end_time: datetime) -> Dict[str, Any]:
+    def _get_alerts_data(self, start_time: datetime, end_time: datetime) -> Dict[str, Any]:
         """Get alerts data.
         
         Args:
@@ -627,27 +623,25 @@ class DashboardGenerator(BaseMonitoring):
         """
         # Get alerts
         alerts_task = Task(
-            id=f"get_alerts_{datetime.now().strftime('%Y%m%d%H%M%S')}",
-            name="get_alerts",
             input_data={
                 "operation": "get_alerts",
                 "start_time": start_time.isoformat(),
                 "end_time": end_time.isoformat()
             },
-            metadata=cast(TaskMetadata, {"source": "dashboard_generator"})
+            metadata={"source": "dashboard_generator"}
         )
         
-        alerts_result = await self.metrics_storage.__call__(alerts_task)
+        alerts_result = self.metrics_storage(alerts_task)
         
         if not hasattr(alerts_result, "status") or alerts_result.status != TaskStatus.COMPLETED:
-            error_msg = getattr(alerts_result, "output_data", {}).get("error", "Unknown error")
+            error_msg = getattr(alerts_result, "error", "Unknown error")
             self.logger.error(f"Failed to get alerts: {error_msg}")
             return {}
         
         # Process alerts data
         return DashboardDataProcessor.process_alerts_data(alerts_result.output_data)
     
-    async def _get_performance_data(self, start_time: datetime, end_time: datetime) -> Dict[str, Any]:
+    def _get_performance_data(self, start_time: datetime, end_time: datetime) -> Dict[str, Any]:
         """Get performance metrics data.
         
         Args:
@@ -659,20 +653,18 @@ class DashboardGenerator(BaseMonitoring):
         """
         # Get performance metrics
         metrics_task = Task(
-            id=f"get_performance_metrics_{datetime.now().strftime('%Y%m%d%H%M%S')}",
-            name="get_performance_metrics",
             input_data={
                 "operation": "get_performance_metrics",
                 "start_time": start_time.isoformat(),
                 "end_time": end_time.isoformat()
             },
-            metadata=cast(TaskMetadata, {"source": "dashboard_generator"})
+            metadata={"source": "dashboard_generator"}
         )
         
-        metrics_result = await self.metrics_storage.__call__(metrics_task)
+        metrics_result = self.metrics_storage(metrics_task)
         
         if not hasattr(metrics_result, "status") or metrics_result.status != TaskStatus.COMPLETED:
-            error_msg = getattr(metrics_result, "output_data", {}).get("error", "Unknown error")
+            error_msg = getattr(metrics_result, "error", "Unknown error")
             self.logger.error(f"Failed to get performance metrics: {error_msg}")
             return {}
         
@@ -681,7 +673,7 @@ class DashboardGenerator(BaseMonitoring):
     
     # Helper methods for chart generation
     
-    async def _generate_system_charts(self, component_data: Dict[str, Any]) -> Dict[str, str]:
+    def _generate_system_charts(self, component_data: Dict[str, Any]) -> Dict[str, str]:
         """Generate charts for system metrics.
         
         Args:
@@ -702,8 +694,6 @@ class DashboardGenerator(BaseMonitoring):
         cpu_values = time_series.get("cpu", [])
         if cpu_values:
             cpu_chart_task = Task(
-                id=f"gen_cpu_chart_{datetime.now().strftime('%Y%m%d%H%M%S')}",
-                name="generate_cpu_chart",
                 input_data={
                     "operation": "generate_chart",
                     "chart_type": "line",
@@ -720,10 +710,10 @@ class DashboardGenerator(BaseMonitoring):
                         "yaxis_max": 100
                     }
                 },
-                metadata=cast(TaskMetadata, {"source": "dashboard_generator"})
+                metadata={"source": "dashboard_generator"}
             )
             
-            cpu_chart_result = await self.chart_generator.__call__(cpu_chart_task)
+            cpu_chart_result = self.chart_generator(cpu_chart_task)
             
             if hasattr(cpu_chart_result, "status") and cpu_chart_result.status == TaskStatus.COMPLETED:
                 charts["cpu_usage"] = cpu_chart_result.output_data.get("chart_file", "")
@@ -732,8 +722,6 @@ class DashboardGenerator(BaseMonitoring):
         memory_values = time_series.get("memory", [])
         if memory_values:
             memory_chart_task = Task(
-                id=f"gen_memory_chart_{datetime.now().strftime('%Y%m%d%H%M%S')}",
-                name="generate_memory_chart",
                 input_data={
                     "operation": "generate_chart",
                     "chart_type": "line",
@@ -750,17 +738,17 @@ class DashboardGenerator(BaseMonitoring):
                         "yaxis_max": 100
                     }
                 },
-                metadata=cast(TaskMetadata, {"source": "dashboard_generator"})
+                metadata={"source": "dashboard_generator"}
             )
             
-            memory_chart_result = await self.chart_generator.__call__(memory_chart_task)
+            memory_chart_result = self.chart_generator(memory_chart_task)
             
             if hasattr(memory_chart_result, "status") and memory_chart_result.status == TaskStatus.COMPLETED:
                 charts["memory_usage"] = memory_chart_result.output_data.get("chart_file", "")
         
         return charts
     
-    async def _generate_health_charts(self, component_data: Dict[str, Any]) -> Dict[str, str]:
+    def _generate_health_charts(self, component_data: Dict[str, Any]) -> Dict[str, str]:
         """Generate charts for component health.
         
         Args:
@@ -784,8 +772,6 @@ class DashboardGenerator(BaseMonitoring):
         
         if sum(health_status) > 0:
             health_chart_task = Task(
-                id=f"gen_health_chart_{datetime.now().strftime('%Y%m%d%H%M%S')}",
-                name="generate_health_chart",
                 input_data={
                     "operation": "generate_chart",
                     "chart_type": "pie",
@@ -798,17 +784,17 @@ class DashboardGenerator(BaseMonitoring):
                         "colors": ["#4CAF50", "#FFC107", "#F44336"]
                     }
                 },
-                metadata=cast(TaskMetadata, {"source": "dashboard_generator"})
+                metadata={"source": "dashboard_generator"}
             )
             
-            health_chart_result = await self.chart_generator.__call__(health_chart_task)
+            health_chart_result = self.chart_generator(health_chart_task)
             
             if hasattr(health_chart_result, "status") and health_chart_result.status == TaskStatus.COMPLETED:
                 charts["health_status"] = health_chart_result.output_data.get("chart_file", "")
         
         return charts
     
-    async def _generate_alerts_charts(self, component_data: Dict[str, Any]) -> Dict[str, str]:
+    def _generate_alerts_charts(self, component_data: Dict[str, Any]) -> Dict[str, str]:
         """Generate charts for alerts.
         
         Args:
@@ -833,8 +819,6 @@ class DashboardGenerator(BaseMonitoring):
         
         if sum(alert_counts) > 0:
             severity_chart_task = Task(
-                id=f"gen_alerts_chart_{datetime.now().strftime('%Y%m%d%H%M%S')}",
-                name="generate_alerts_chart",
                 input_data={
                     "operation": "generate_chart",
                     "chart_type": "pie",
@@ -847,17 +831,17 @@ class DashboardGenerator(BaseMonitoring):
                         "colors": ["#F44336", "#FF5722", "#FFC107", "#2196F3"]
                     }
                 },
-                metadata=cast(TaskMetadata, {"source": "dashboard_generator"})
+                metadata={"source": "dashboard_generator"}
             )
             
-            severity_chart_result = await self.chart_generator.__call__(severity_chart_task)
+            severity_chart_result = self.chart_generator(severity_chart_task)
             
             if hasattr(severity_chart_result, "status") and severity_chart_result.status == TaskStatus.COMPLETED:
                 charts["alerts_by_severity"] = severity_chart_result.output_data.get("chart_file", "")
         
         return charts
     
-    async def _generate_performance_charts(self, component_data: Dict[str, Any]) -> Dict[str, str]:
+    def _generate_performance_charts(self, component_data: Dict[str, Any]) -> Dict[str, str]:
         """Generate charts for performance metrics.
         
         Args:
@@ -878,8 +862,6 @@ class DashboardGenerator(BaseMonitoring):
         
         if components and avg_execution_times:
             execution_chart_task = Task(
-                id=f"gen_perf_chart_{datetime.now().strftime('%Y%m%d%H%M%S')}",
-                name="generate_performance_chart",
                 input_data={
                     "operation": "generate_chart",
                     "chart_type": "bar",
@@ -894,10 +876,10 @@ class DashboardGenerator(BaseMonitoring):
                         "yaxis_title": "Execution Time (ms)"
                     }
                 },
-                metadata=cast(TaskMetadata, {"source": "dashboard_generator"})
+                metadata={"source": "dashboard_generator"}
             )
             
-            execution_chart_result = await self.chart_generator.__call__(execution_chart_task)
+            execution_chart_result = self.chart_generator(execution_chart_task)
             
             if hasattr(execution_chart_result, "status") and execution_chart_result.status == TaskStatus.COMPLETED:
                 charts["avg_execution_time"] = execution_chart_result.output_data.get("chart_file", "")

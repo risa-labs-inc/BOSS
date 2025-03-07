@@ -17,7 +17,7 @@ import logging
 import argparse
 import asyncio
 import signal
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 # Add the parent directory to the path so we can import the boss package
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
@@ -27,7 +27,9 @@ from boss.lighthouse.monitoring.system_metrics_collector import SystemMetricsCol
 from boss.lighthouse.monitoring.component_health_checker import ComponentHealthChecker
 from boss.lighthouse.monitoring.performance_metrics_tracker import PerformanceMetricsTracker
 from boss.lighthouse.monitoring.dashboard_generator import DashboardGenerator
-from boss.core.task_models import Task
+from boss.lighthouse.monitoring.metrics_storage import MetricsStorage
+from boss.core.task_models import Task, TaskResult
+from boss.core.task_resolver_metadata import TaskResolverMetadata
 
 
 # Configure logging
@@ -70,41 +72,70 @@ class MonitoringService:
         """Initialize the monitoring service.
         
         Args:
-            data_dir: Directory where monitoring data is stored
+            data_dir: Directory for storing data
             api_host: Host to bind the API server to
             api_port: Port to bind the API server to
-            metadata: Metadata for components
+            metadata: Additional metadata to pass to the components
         """
-        # Ensure data directory exists
         self.data_dir = data_dir
-        os.makedirs(self.data_dir, exist_ok=True)
+        os.makedirs(data_dir, exist_ok=True)
         
-        # Set up metadata
+        # Use metadata or empty dict if None
         self.metadata = metadata or {}
         
         # API server configuration
         self.api_host = api_host
         self.api_port = api_port
         
-        # Initialize components
-        self.system_metrics_collector = SystemMetricsCollector(self.metadata)
-        self.component_health_checker = ComponentHealthChecker(self.metadata)
-        self.performance_metrics_tracker = PerformanceMetricsTracker(self.metadata)
-        self.dashboard_generator = DashboardGenerator(self.metadata)
+        # Create TaskResolverMetadata from dict for compatibility
+        resolver_metadata = TaskResolverMetadata(
+            id="monitoring_service",
+            name="Monitoring Service",
+            description="Manages monitoring components and the API server",
+            version="1.0.0",
+            properties=self.metadata
+        )
+        
+        # Initialize storage first since other components need it
+        metrics_dir = os.path.join(data_dir, "metrics")
+        os.makedirs(metrics_dir, exist_ok=True)
+        self.metrics_storage = MetricsStorage(data_dir=metrics_dir)
+        
+        # Initialize components with proper metadata and storage
+        self.system_metrics_collector = SystemMetricsCollector(
+            metadata=resolver_metadata,
+            metrics_storage=self.metrics_storage
+        )
+        
+        self.component_health_checker = ComponentHealthChecker(
+            metadata=resolver_metadata,
+            metrics_storage=self.metrics_storage
+        )
+        
+        self.performance_metrics_tracker = PerformanceMetricsTracker(
+            metadata=resolver_metadata,
+            metrics_storage=self.metrics_storage
+        )
+        
+        # Initialize dashboard generator
+        dashboard_dir = os.path.join(data_dir, "dashboards")
+        os.makedirs(dashboard_dir, exist_ok=True)
+        self.dashboard_generator = DashboardGenerator(
+            data_dir=dashboard_dir,
+            metrics_storage=self.metrics_storage
+        )
         
         # Initialize API server
         self.api = MonitoringAPI(
             data_dir=self.data_dir,
-            metadata=self.metadata,
+            metadata=resolver_metadata,
             host=self.api_host,
             port=self.api_port
         )
         
-        # Track service state
         self.running = False
-        
-        # Set up signal handlers
         self._setup_signal_handlers()
+        logger.info("Monitoring service initialized")
         
     def _setup_signal_handlers(self) -> None:
         """Set up signal handlers for graceful shutdown."""
