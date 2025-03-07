@@ -1,0 +1,19 @@
+# Current Time Check Rule
+
+Always use the `run_terminal_cmd` tool with the `date` command to check the current date and time before:
+- Updating documentation dates
+- Setting timestamps in code
+- Creating release schedules
+- Planning project timelines
+
+## Example Command:
+```bash
+date
+```
+
+For timezone-specific time (e.g., Washington DC), use:
+```bash
+date -d "TZ=\"America/New_York\"" '+%Y-%m-%d %H:%M:%S %Z'
+```
+
+Never assume a future or past date without verification. 

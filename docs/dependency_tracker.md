@@ -62,4 +62,15 @@ This document tracks all dependencies in the project, their versions, when they 
 
 1. Monitor for official Grok 3 API release (priority: high)
 2. Update all remaining indirect dependencies (priority: medium)
-3. Update secondary dependencies (priority: low) 
+3. Update secondary dependencies (priority: low)
+
+## Dependency Tracker
+
+| Package | Current Version | Latest Version | Last Updated |
+|---------|----------------|----------------|--------------|
+| psutil | 5.9.8 | 5.9.8 | 2024-06-11 |
+| jinja2 | 3.1.3 | 3.1.3 | 2024-06-11 |
+| types-jinja2 | 2.11.9 | 2.11.9 | 2024-06-11 |
+| matplotlib | 3.8.2 | 3.8.2 | 2024-06-11 |
+| fastapi | 0.108.0 | 0.108.0 | 2024-06-11 |
+| uvicorn | 0.25.0 | 0.25.0 | 2024-06-11 | 
