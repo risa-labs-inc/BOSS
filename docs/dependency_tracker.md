@@ -74,4 +74,5 @@ This document tracks all dependencies in the project, their versions, when they 
 | types-jinja2 | 2.11.9 | 2.11.9 | 2024-06-11 |
 | matplotlib | 3.8.2 | 3.8.2 | 2024-06-11 |
 | fastapi | 0.108.0 | 0.108.0 | 2024-06-11 |
-| uvicorn | 0.25.0 | 0.25.0 | 2024-06-11 | 
+| uvicorn | 0.25.0 | 0.25.0 | 2024-06-11 |
+| httpx | 0.28.1 | 0.28.1 | 2024-03-07 | 
