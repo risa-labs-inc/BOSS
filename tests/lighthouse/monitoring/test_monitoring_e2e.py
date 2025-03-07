@@ -76,9 +76,21 @@ def chart_generator(temp_monitoring_dir):
 @pytest.fixture
 def dashboard_generator(temp_monitoring_dir, metrics_storage, chart_generator):
     """Create a DashboardGenerator instance for testing."""
+    from boss.core.task_resolver import TaskResolverMetadata
+    
     dashboard_dir = os.path.join(temp_monitoring_dir, "dashboards")
     os.makedirs(dashboard_dir, exist_ok=True)
+    
+    metadata = TaskResolverMetadata(
+        id="dashboard_generator_test",
+        name="DashboardGenerator",
+        version="1.0.0",
+        description="Dashboard Generator for Testing",
+        properties={}
+    )
+    
     return DashboardGenerator(
+        resolver_metadata=metadata,
         data_dir=dashboard_dir,
         metrics_storage=metrics_storage,
         chart_generator=chart_generator
@@ -322,15 +334,19 @@ class TestMonitoringE2E:
         """Test the full flow from metrics collection to dashboard generation."""
         # Collect system metrics
         collect_task = Task(
+            id="collect_metrics_task",
+            name="collect_metrics",
             input_data={"operation": "collect", "metrics_type": "all"},
             metadata={"source": "e2e_test"}
         )
         
-        collect_result = system_metrics_collector(collect_task)
+        collect_result = await system_metrics_collector(collect_task)
         assert collect_result.status == TaskStatus.COMPLETED
         
         # Generate a dashboard for the collected metrics
         dashboard_task = Task(
+            id="generate_dashboard_task",
+            name="generate_dashboard",
             input_data={
                 "operation": "generate_dashboard",
                 "dashboard_type": "system",
@@ -340,7 +356,7 @@ class TestMonitoringE2E:
             metadata={"source": "e2e_test"}
         )
         
-        dashboard_result = dashboard_generator(dashboard_task)
+        dashboard_result = await dashboard_generator(dashboard_task)
         
         # Verify dashboard was generated
         assert dashboard_result.status == TaskStatus.COMPLETED

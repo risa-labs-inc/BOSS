@@ -29,11 +29,21 @@ This directory contains the monitoring system components for the BOSS platform.
 
 The monitoring system has undergone significant refactoring to improve maintainability and reduce code complexity:
 
-1. **DashboardGenerator Refactoring**
-   - Split into multiple files to reduce complexity and improve maintainability
-   - Extracted template rendering and data processing into separate classes in `dashboard_components.py`
+1. **DashboardGenerator Refactoring** (Completed March 7, 2025)
+   - Split into multiple files to reduce complexity and improve maintainability:
+     - `dashboard_generator.py` (Main component) - Handles core functionality and dashboard generation
+     - `dashboard_components.py` (New file) - Contains specialized helper classes:
+       - `DashboardTemplateRenderer` - Handles template rendering with Jinja2
+       - `DashboardDataProcessor` - Processes raw data into dashboard-ready formats
    - Made all methods asynchronous for better performance and concurrency
-   - Improved error handling and type checking
+   - Added proper type annotations and improved error handling
+   - Added comprehensive unit tests for all components
+
+   **Benefits of this refactoring:**
+   - Reduced file size from 971 lines to about 400-500 lines per file
+   - Improved separation of concerns between components
+   - Enhanced testability with more focused components
+   - Better reusability of dashboard-related functionality
 
 2. **Visualization Improvements**
    - Enhanced chart generation capabilities with more chart types
@@ -43,6 +53,27 @@ The monitoring system has undergone significant refactoring to improve maintaina
 3. **API Integration**
    - Added REST API for accessing monitoring data and dashboards
    - Integrated API with the monitoring service for a unified experience
+
+## Dashboard Components Structure
+
+### DashboardGenerator
+The main component that orchestrates dashboard creation:
+- Handles dashboard and report requests
+- Manages component data retrieval
+- Controls chart generation
+- Produces final HTML output
+
+### DashboardTemplateRenderer
+Specialized component for template rendering:
+- Manages Jinja2 template environment
+- Renders dashboard and report templates
+- Provides utility methods for formatting data in templates
+
+### DashboardDataProcessor
+Specialized component for data processing:
+- Transforms raw metric data into dashboard-friendly formats
+- Calculates summaries and aggregations
+- Prepares data for visualization
 
 ## Usage
 
