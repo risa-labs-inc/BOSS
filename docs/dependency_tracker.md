@@ -13,6 +13,7 @@ This document tracks all dependencies in the project, their versions, when they 
 | together      | ^1.4.1   | 2024-03-06 | Up-to-date  | Latest Together AI API integration   |
 | xai-grok-sdk  | ^0.0.12  | 2024-03-06 | Up-to-date  | Official xAI Grok API client         |
 | pyyaml        | ^6.0.2   | 2024-03-06 | Up-to-date  | YAML parsing/serialization support   |
+| jsonschema    | ^4.23.0  | 2024-03-07 | Up-to-date  | JSON Schema validation               |
 
 ## Development Dependencies
 

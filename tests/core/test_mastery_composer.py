@@ -7,7 +7,7 @@ including linear, conditional, and complex workflows.
 
 import unittest
 import asyncio
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 from unittest.mock import Mock, MagicMock, patch
 
 from boss.core.task_models import Task, TaskResult, TaskStatus
@@ -30,8 +30,8 @@ class MockTaskResolver(TaskResolver):
         self.output_data = output_data or {"message": f"{name} executed successfully"}
         self.called = False
     
-    def _resolve_task(self, task: Task) -> TaskResult:
-        """Return success or failure based on configuration."""
+    async def resolve(self, task: Task) -> Union[TaskResult, Any]:
+        """Implement the required abstract resolve method."""
         self.called = True
         if self.succeeds:
             return TaskResult(
@@ -222,7 +222,8 @@ class TestMasteryComposer(unittest.TestCase):
             input_data={"key": "value"}
         )
         
-        result = self.composer._resolve_task(task)
+        loop = asyncio.get_event_loop()
+        result = loop.run_until_complete(self.composer.resolve(task))
         
         # All resolvers should have been called
         self.assertTrue(self.resolver1.called)
@@ -231,7 +232,12 @@ class TestMasteryComposer(unittest.TestCase):
         
         # Result should be successful
         self.assertEqual(result.status, TaskStatus.COMPLETED)
-        self.assertEqual(result.output_data, self.resolver3.output_data)
+        
+        # Check that the output data contains the expected message
+        self.assertEqual(result.output_data.get("message"), self.resolver3.output_data.get("message"))
+        
+        # Check that the executed_node field is present
+        self.assertEqual(result.output_data.get("executed_node"), "node3")
     
     def test_resolve_task_with_failure(self):
         """Test execution when a node fails."""
@@ -244,7 +250,8 @@ class TestMasteryComposer(unittest.TestCase):
             input_data={"key": "value"}
         )
         
-        result = self.composer._resolve_task(task)
+        loop = asyncio.get_event_loop()
+        result = loop.run_until_complete(self.composer.resolve(task))
         
         # First two resolvers should have been called
         self.assertTrue(self.resolver1.called)
@@ -326,33 +333,64 @@ class TestMasteryComposer(unittest.TestCase):
             input_data={"key": "value"}
         )
         
-        result = conditional_mastery._resolve_task(task)
+        loop = asyncio.get_event_loop()
+        result = loop.run_until_complete(conditional_mastery.resolve(task))
         
         self.assertEqual(result.status, TaskStatus.COMPLETED)
-        self.assertEqual(result.output_data, {"path": "A"})
+        
+        # Check that the output data contains the expected path
+        self.assertEqual(result.output_data.get("path"), "A")
+        
+        # Check that the executed_node field is present
+        self.assertEqual(result.output_data.get("executed_node"), "output")
+        
+        # Now let's try with a task that has the decision in the input
+        task = Task(
+            id="test_task2",
+            name="Test Conditional Task with Decision",
+            input_data={"decision": "path_a"}
+        )
+        
+        result = loop.run_until_complete(conditional_mastery.resolve(task))
+        
+        self.assertEqual(result.status, TaskStatus.COMPLETED)
+        self.assertEqual(result.output_data.get("path"), "A")
         
         # Change decision to path B
         decision_resolver.output_data = {"decision": "path_b"}
-        result = conditional_mastery._resolve_task(task)
+        task = Task(
+            id="test_task3",
+            name="Test Conditional Task with Decision B",
+            input_data={"key": "value"}
+        )
+        
+        result = loop.run_until_complete(conditional_mastery.resolve(task))
         
         self.assertEqual(result.status, TaskStatus.COMPLETED)
-        self.assertEqual(result.output_data, {"path": "B"})
+        self.assertEqual(result.output_data.get("path"), "B")
         
         # Change decision to unknown path, should use default
         decision_resolver.output_data = {"decision": "unknown"}
-        result = conditional_mastery._resolve_task(task)
+        task = Task(
+            id="test_task4",
+            name="Test Conditional Task with Unknown Decision",
+            input_data={"key": "value"}
+        )
+        
+        result = loop.run_until_complete(conditional_mastery.resolve(task))
         
         self.assertEqual(result.status, TaskStatus.COMPLETED)
-        self.assertEqual(result.output_data, {"path": "Default"})
+        self.assertEqual(result.output_data.get("path"), "Default")
     
     def test_health_check(self):
         """Test the health_check method."""
         # All resolvers are healthy
-        self.assertTrue(self.composer.health_check())
+        loop = asyncio.get_event_loop()
+        self.assertTrue(loop.run_until_complete(self.composer.health_check()))
         
         # Make a resolver unhealthy
         with patch.object(self.resolver2, 'health_check', return_value=False):
-            self.assertFalse(self.composer.health_check())
+            self.assertFalse(loop.run_until_complete(self.composer.health_check()))
 
 
 if __name__ == "__main__":

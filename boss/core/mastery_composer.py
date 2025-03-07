@@ -8,7 +8,7 @@ by chaining multiple TaskResolvers together in configurable patterns.
 import logging
 from typing import Any, Dict, List, Optional, Union, Callable, Type, cast
 
-from boss.core.task_models import Task, TaskResult, TaskStatus, TaskError
+from boss.core.task_models import Task, TaskResult, TaskStatus, TaskError, TaskMetadata
 from boss.core.task_resolver import TaskResolver, TaskResolverMetadata
 from boss.core.task_retry import TaskRetryManager
 
@@ -84,26 +84,42 @@ class MasteryComposer(TaskResolver):
             retry_manager: Optional TaskRetryManager for handling retries
             max_depth: Maximum depth of execution to prevent infinite loops
         """
-        super().__init__(metadata, retry_manager)
+        super().__init__(metadata)
         self.nodes = nodes
         self.entry_node = entry_node
         self.exit_nodes = exit_nodes or []
         self.max_depth = max_depth
+        self.retry_manager = retry_manager
         self.logger = logging.getLogger(__name__)
         
         # Validate the configuration
         self._validate_configuration()
     
+    async def resolve(self, task: Task) -> Union[TaskResult, Any]:
+        """
+        Resolve a task by executing the mastery composition.
+        
+        This is the main entry point required by the TaskResolver interface.
+        It delegates to the _resolve_task method.
+        
+        Args:
+            task: The task to resolve
+            
+        Returns:
+            The final TaskResult
+        """
+        return await self._resolve_task(task)
+    
     def _validate_configuration(self) -> None:
         """Validate the mastery configuration."""
         # Ensure entry node exists
         if self.entry_node not in self.nodes:
-            raise ValueError(f"Entry node '{self.entry_node}' not found in nodes dictionary")
+            raise ValueError(f"Entry node '{self.entry_node}' not found in nodes")
         
-        # Ensure all exit nodes exist
+        # Ensure exit nodes exist
         for exit_node in self.exit_nodes:
             if exit_node not in self.nodes:
-                raise ValueError(f"Exit node '{exit_node}' not found in nodes dictionary")
+                raise ValueError(f"Exit node '{exit_node}' not found in nodes")
         
         # Ensure all next_node references are valid
         for node_id, node in self.nodes.items():
@@ -111,29 +127,29 @@ class MasteryComposer(TaskResolver):
                 if next_node not in self.nodes:
                     raise ValueError(f"Node '{node_id}' references non-existent next node '{next_node}'")
     
-    def health_check(self) -> bool:
+    async def health_check(self) -> bool:
         """
-        Perform a health check on this resolver.
+        Check if the mastery composition is healthy.
+        
+        This checks the health of all resolvers in the composition.
         
         Returns:
-            True if all component resolvers are healthy, False otherwise
+            True if the composition is healthy, False otherwise
         """
-        all_healthy = True
-        
-        # Check health of all component resolvers
-        for node_id, node in self.nodes.items():
-            try:
-                resolver_healthy = node.resolver.health_check()
+        try:
+            # Check the health of all resolvers
+            for node_id, node in self.nodes.items():
+                resolver_healthy = await node.resolver.health_check()
                 if not resolver_healthy:
-                    self.logger.warning(f"Node {node_id} resolver health check failed")
-                    all_healthy = False
-            except Exception as e:
-                self.logger.error(f"Error checking health of node {node_id}: {str(e)}")
-                all_healthy = False
-        
-        return all_healthy
+                    self.logger.error(f"Resolver for node '{node_id}' is unhealthy")
+                    return False
+            
+            return True
+        except Exception as e:
+            self.logger.error(f"Health check failed: {str(e)}")
+            return False
     
-    def _execute_node(self, node_id: str, task: Task, depth: int = 0) -> TaskResult:
+    async def _execute_node(self, node_id: str, task: Task, depth: int = 0) -> TaskResult:
         """
         Execute a single node in the mastery.
         
@@ -149,38 +165,34 @@ class MasteryComposer(TaskResolver):
         node = self.nodes.get(node_id)
         if not node:
             return TaskResult(
-                task=task,
+                task_id=task.id,
                 status=TaskStatus.ERROR,
-                error=TaskError(
-                    message=f"Node '{node_id}' not found",
-                    task=task,
-                    resolver_name=self.metadata.name
-                )
+                message=f"Node '{node_id}' not found"
             )
         
         # Execute the node's resolver
         try:
-            result = node.resolver(task)
+            result = await node.resolver(task)
             
-            # Add node execution information to the result metadata
-            if result.metadata is None:
-                result.metadata = {}
-            result.metadata["executed_node"] = node_id
+            # Create a new result with the executed_node information
+            output_data = result.output_data.copy() if hasattr(result, 'output_data') else {}
+            output_data["executed_node"] = node_id
             
-            return result
-        except Exception as e:
             return TaskResult(
-                task=task,
+                task_id=task.id,
+                status=result.status,
+                output_data=output_data,
+                message=result.message if hasattr(result, 'message') else None
+            )
+        except Exception as e:
+            self.logger.error(f"Error executing node '{node_id}': {str(e)}")
+            return TaskResult(
+                task_id=task.id,
                 status=TaskStatus.ERROR,
-                error=TaskError(
-                    message=f"Error executing node '{node_id}': {str(e)}",
-                    task=task,
-                    resolver_name=self.metadata.name,
-                    exception=e
-                )
+                message=f"Error executing node '{node_id}': {str(e)}"
             )
     
-    def _resolve_task(self, task: Task) -> TaskResult:
+    async def _resolve_task(self, task: Task) -> TaskResult:
         """
         Resolve a task by executing the mastery composition.
         
@@ -198,15 +210,15 @@ class MasteryComposer(TaskResolver):
         # Execute nodes until we reach an exit node or run out of nodes to execute
         while depth < self.max_depth:
             # Execute the current node
-            result = self._execute_node(current_node_id, current_task, depth)
+            result = await self._execute_node(current_node_id, current_task, depth)
             
             # Update the task for the next node
             current_task = Task(
-                input_data=result.output_data,
-                metadata=task.metadata.copy() if task.metadata else {},
-                task_id=task.task_id,
+                id=task.id,
                 name=task.name,
-                description=task.description
+                description=task.description,
+                input_data=result.output_data,
+                metadata=TaskMetadata()  # Create a new empty metadata
             )
             
             # If we've reached an exit node, return the result
@@ -232,13 +244,9 @@ class MasteryComposer(TaskResolver):
         
         # If we get here, we've exceeded the maximum depth
         return TaskResult(
-            task=task,
+            task_id=task.id,
             status=TaskStatus.ERROR,
-            error=TaskError(
-                message=f"Maximum execution depth ({self.max_depth}) exceeded",
-                task=task,
-                resolver_name=self.metadata.name
-            )
+            message=f"Maximum execution depth ({self.max_depth}) exceeded"
         )
     
     def can_handle(self, task: Task) -> bool:
@@ -252,7 +260,7 @@ class MasteryComposer(TaskResolver):
             True if this resolver can handle the task, False otherwise
         """
         # Check if the task specifically requests this resolver
-        resolver_name = task.metadata.get("resolver", "") if task.metadata else ""
+        resolver_name = task.input_data.get("resolver", "") if task.input_data else ""
         return bool(resolver_name == self.metadata.name or resolver_name == "")
     
     @classmethod
@@ -278,15 +286,15 @@ class MasteryComposer(TaskResolver):
         
         nodes = {}
         for i, resolver in enumerate(resolvers):
-            node_id = f"node_{i}"
-            next_node = [f"node_{i+1}"] if i < len(resolvers) - 1 else []
+            node_id = resolver.metadata.name
+            next_node = [resolvers[i+1].metadata.name] if i < len(resolvers) - 1 else []
             nodes[node_id] = MasteryNode(resolver, node_id, next_node)
         
         return cls(
             metadata=metadata,
             nodes=nodes,
-            entry_node="node_0",
-            exit_nodes=[f"node_{len(resolvers)-1}"],
+            entry_node=resolvers[0].metadata.name,
+            exit_nodes=[resolvers[-1].metadata.name],
             retry_manager=retry_manager
         )
     
@@ -324,17 +332,37 @@ class MasteryComposer(TaskResolver):
         
         # Create a complex condition function
         def route_condition(result: TaskResult) -> bool:
-            output = result.output_data
-            return output in condition_map
+            decision_key = "decision"
+            if decision_key in result.output_data:
+                decision_value = result.output_data[decision_key]
+                return decision_value in condition_map
+            return False
         
         # Output node with different resolvers based on the decision
         def get_resolver_for_output(task: Task) -> TaskResolver:
-            decision_output = task.input_data
-            return condition_map.get(decision_output, default_resolver or list(condition_map.values())[0])
+            # Extract the decision value from the input data
+            decision_key = "decision"
+            decision_value = None
+            
+            # Look for the decision directly in the input data
+            if task.input_data and isinstance(task.input_data, dict):
+                if decision_key in task.input_data:
+                    decision_value = task.input_data[decision_key]
+            
+            # If we couldn't find a decision, use the default
+            if decision_value is None or decision_value not in condition_map:
+                return default_resolver or list(condition_map.values())[0]
+            
+            return condition_map[decision_value]
         
         class DynamicResolver(TaskResolver):
             def __init__(self, metadata: TaskResolverMetadata) -> None:
                 super().__init__(metadata)
+            
+            async def resolve(self, task: Task) -> TaskResult:
+                """Implement the required abstract resolve method."""
+                resolver = get_resolver_for_output(task)
+                return await resolver(task)
             
             def _resolve_task(self, task: Task) -> TaskResult:
                 resolver = get_resolver_for_output(task)
