@@ -13,6 +13,7 @@ faiss-cpu = "^1.10.0"
 asyncio = "^3.4.3"
 together = "^1.4.1"
 xai-grok-sdk = "^0.0.12"
+pyyaml = "^6.0.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
@@ -21,6 +22,7 @@ mypy = "^1.15.0"
 black = "^25.1.0"
 isort = "^6.0.1"
 flake8 = "^7.1.2"
+types-pyyaml = "^6.0.12.20241230"
 
 [build-system]
 requires = ["poetry-core"]

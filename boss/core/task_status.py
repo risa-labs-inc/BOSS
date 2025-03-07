@@ -4,10 +4,10 @@ Task status enum and related utilities.
 This module defines the TaskStatus enum and methods for transition validation.
 """
 from enum import Enum
-from typing import Optional, Dict, Set
+from typing import Optional, Dict, Set, List
 
 
-class TaskStatus(Enum):
+class TaskStatus(str, Enum):
     """
     Enum representing the possible states of a task.
     
@@ -34,46 +34,16 @@ class TaskStatus(Enum):
     EVOLVING = "evolving"
     DELEGATED = "delegated"
     
-    # Define valid transitions for each status
-    _VALID_TRANSITIONS = {
-        "PENDING": {"IN_PROGRESS", "CANCELLED", "DELEGATED"},
-        "IN_PROGRESS": {"COMPLETED", "FAILED", "ERROR", "WAITING", "CANCELLED", "DELEGATED"},
-        "COMPLETED": set(),  # Terminal state, no transitions
-        "FAILED": set(),  # Terminal state, no transitions
-        "ERROR": {"RETRYING", "FAILED", "EVOLVING"},
-        "WAITING": {"IN_PROGRESS", "CANCELLED", "DELEGATED"},
-        "CANCELLED": set(),  # Terminal state, no transitions
-        "RETRYING": {"IN_PROGRESS", "FAILED", "ERROR"},
-        "EVOLVING": {"IN_PROGRESS", "FAILED", "ERROR"},
-        "DELEGATED": {"COMPLETED", "FAILED", "ERROR"}
-    }
-    
     def is_terminal(self) -> bool:
         """
-        Check if the status is a terminal state.
+        Check if this status is a terminal state.
+        
+        Terminal states are those that cannot transition to any other states.
         
         Returns:
-            bool: True if status is terminal, False otherwise.
+            bool: True if this is a terminal state, False otherwise.
         """
-        return self in {TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED}
-    
-    def is_active(self) -> bool:
-        """
-        Check if the status represents an active task.
-        
-        Returns:
-            bool: True if status is active, False otherwise.
-        """
-        return self in {TaskStatus.IN_PROGRESS, TaskStatus.RETRYING, TaskStatus.EVOLVING}
-    
-    def is_waiting(self) -> bool:
-        """
-        Check if the status represents a waiting task.
-        
-        Returns:
-            bool: True if status is waiting, False otherwise.
-        """
-        return self in {TaskStatus.PENDING, TaskStatus.WAITING}
+        return self in [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED]
     
     def can_transition_to(self, new_status: 'TaskStatus') -> bool:
         """
@@ -87,6 +57,38 @@ class TaskStatus(Enum):
         """
         if self == new_status:
             return True  # No change, always valid
-            
-        valid_transitions = self._VALID_TRANSITIONS.get(self.name, set())
-        return new_status.name in valid_transitions 
+        
+        # Define valid transitions directly in the method
+        if self == TaskStatus.PENDING:
+            return new_status in [TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED, TaskStatus.DELEGATED]
+        
+        elif self == TaskStatus.IN_PROGRESS:
+            return new_status in [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.ERROR, 
+                                 TaskStatus.WAITING, TaskStatus.CANCELLED, TaskStatus.DELEGATED]
+        
+        elif self == TaskStatus.ERROR:
+            return new_status in [TaskStatus.RETRYING, TaskStatus.FAILED, TaskStatus.EVOLVING]
+        
+        elif self == TaskStatus.WAITING:
+            return new_status in [TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED, TaskStatus.DELEGATED]
+        
+        elif self == TaskStatus.RETRYING:
+            return new_status in [TaskStatus.IN_PROGRESS, TaskStatus.FAILED, TaskStatus.ERROR]
+        
+        elif self == TaskStatus.EVOLVING:
+            return new_status in [TaskStatus.IN_PROGRESS, TaskStatus.FAILED, TaskStatus.ERROR]
+        
+        elif self == TaskStatus.DELEGATED:
+            return new_status in [TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.ERROR]
+        
+        # Terminal states cannot transition
+        return False
+    
+    def is_success(self) -> bool:
+        """
+        Check if this status represents a successful completion.
+        
+        Returns:
+            bool: True if this status represents success, False otherwise.
+        """
+        return self == TaskStatus.COMPLETED 

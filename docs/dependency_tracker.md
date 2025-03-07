@@ -12,6 +12,7 @@ This document tracks all dependencies in the project, their versions, when they 
 | asyncio       | ^3.4.3   | 2024-03-06 | Up-to-date  | Async operations support             |
 | together      | ^1.4.1   | 2024-03-06 | Up-to-date  | Latest Together AI API integration   |
 | xai-grok-sdk  | ^0.0.12  | 2024-03-06 | Up-to-date  | Official xAI Grok API client         |
+| pyyaml        | ^6.0.2   | 2024-03-06 | Up-to-date  | YAML parsing/serialization support   |
 
 ## Development Dependencies
 
@@ -23,6 +24,7 @@ This document tracks all dependencies in the project, their versions, when they 
 | black         | ^25.1.0  | 2024-03-06 | Up-to-date  | Latest version                       |
 | isort         | ^6.0.1   | 2024-03-06 | Up-to-date  | Latest version                       |
 | flake8        | ^7.1.2   | 2024-03-06 | Up-to-date  | Latest version                       |
+| types-pyyaml  | ^6.0.12  | 2024-03-06 | Up-to-date  | Type stubs for PyYAML               |
 
 ## Other Dependencies (From Audit)
 
