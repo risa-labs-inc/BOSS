@@ -8,10 +8,14 @@ import time
 import logging
 from abc import abstractmethod
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union, TypeVar
+from typing import Any, Dict, List, Optional, Tuple, Union, TypeVar, Type
 
+from pydantic import BaseModel, Field
+
+from boss.core.task_base import Task
+from boss.core.task_result import TaskResult
+from boss.core.task_error import TaskError
 from boss.core.task_resolver import TaskResolver, TaskResolverMetadata
-from boss.core.task_models import Task, TaskResult, TaskError
 from boss.core.task_status import TaskStatus
 
 

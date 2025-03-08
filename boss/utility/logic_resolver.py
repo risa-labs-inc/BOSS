@@ -1,15 +1,17 @@
 """
-LogicResolver module for handling conditional logic and branching operations.
+Logic resolver for evaluating logical conditions and expressions.
 
-This resolver handles decision-making operations, including conditional checks,
-boolean logic operations, and branching logic for task workflows.
+This module provides a resolver that can evaluate logical expressions and apply conditional logic.
 """
 
+import re
 import logging
-import operator
-from typing import Any, Dict, List, Optional, Union, Callable, Type, cast
+from typing import Any, Dict, List, Optional, Tuple, Union, Callable, Set, cast
 
-from boss.core.task_models import Task, TaskResult, TaskStatus, TaskError
+from boss.core.task_base import Task
+from boss.core.task_result import TaskResult
+from boss.core.task_status import TaskStatus
+from boss.core.task_error import TaskError
 from boss.core.task_resolver import TaskResolver, TaskResolverMetadata
 from boss.core.task_retry import TaskRetryManager
 
@@ -466,8 +468,6 @@ class LogicResolver(TaskResolver):
         if not isinstance(value, str):
             return False
             
-        import re
-        
         # Convert simple wildcard pattern to regex
         regex_pattern = pattern
         regex_pattern = regex_pattern.replace(".", "\\.")

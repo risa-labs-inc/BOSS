@@ -1,20 +1,21 @@
 """
-HealthCheckResolver module for verifying the health of TaskResolvers in the system.
+Health check resolver for checking the health of task resolvers.
 
-This module provides functionality for monitoring the health of all registered
-TaskResolvers, ensuring they are operational and functioning correctly.
+This module provides a health check resolver that can check the health of other task resolvers.
 """
 
-import logging
-import time
-import traceback
+import json
 import asyncio
+import logging
 from datetime import datetime
-from enum import Enum, auto
-from typing import Any, Dict, List, Optional, Set, Tuple, cast, Union
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any, Dict, List, Optional, Union, Set, Type, cast
 
-from boss.core.task_models import Task, TaskResult, TaskStatus, TaskError
+from pydantic import BaseModel, Field
+
+from boss.core.task_base import Task
+from boss.core.task_result import TaskResult
+from boss.core.task_status import TaskStatus
+from boss.core.task_error import TaskError
 from boss.core.task_resolver import TaskResolver, TaskResolverMetadata
 from boss.core.registry import TaskResolverRegistry
 

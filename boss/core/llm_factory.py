@@ -6,12 +6,12 @@ based on configuration or task requirements.
 """
 import os
 import logging
-from typing import Dict, List, Optional, Type, Union
+from typing import Dict, List, Optional, Type, Any, cast
 
+from boss.core.task_base import Task
 from boss.core.task_resolver import TaskResolver
 from boss.core.base_llm_resolver import BaseLLMTaskResolver
 from boss.core.openai_resolver import OpenAITaskResolver
-from boss.core.task_models import Task
 
 
 class LLMTaskResolverFactory:

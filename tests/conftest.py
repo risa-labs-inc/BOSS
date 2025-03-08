@@ -7,7 +7,9 @@ import pytest
 from datetime import datetime
 from typing import Dict, Any, Optional
 
-from boss.core.task_models import Task, TaskResult, TaskError, TaskMetadata
+from boss.core.task_base import Task, TaskMetadata
+from boss.core.task_result import TaskResult
+from boss.core.task_error import TaskError
 from boss.core.task_status import TaskStatus
 from boss.core.task_resolver import TaskResolver, TaskResolverMetadata
 from boss.core.task_retry import TaskRetryManager, BackoffStrategy

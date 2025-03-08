@@ -12,7 +12,10 @@ from unittest.mock import MagicMock, patch
 from typing import Dict, Any, List, Optional, Callable, Union, Tuple
 import logging
 
-from boss.core.task_models import Task, TaskStatus, TaskResult, TaskError
+from boss.core.task_base import Task
+from boss.core.task_status import TaskStatus
+from boss.core.task_result import TaskResult
+from boss.core.task_error import TaskError
 from boss.core.task_resolver import TaskResolver, TaskResolverMetadata
 from boss.core.task_retry import TaskRetryManager
 from boss.utility.logic_resolver import LogicResolver, ConditionFunction

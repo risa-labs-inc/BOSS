@@ -9,8 +9,9 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Union, Callable, Type, Set, cast
 from collections import defaultdict
+from datetime import datetime
 
-from boss.core.task_models import Task
+from boss.core.task_base import Task
 from boss.core.task_resolver import TaskResolver, TaskResolverMetadata
 
 

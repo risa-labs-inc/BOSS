@@ -11,7 +11,10 @@ import asyncio
 from typing import Any, Dict, List, Optional, Union, Set, Type, cast
 from datetime import datetime
 
-from boss.core.task_models import Task, TaskResult, TaskStatus, TaskError
+from boss.core.task_base import Task
+from boss.core.task_result import TaskResult
+from boss.core.task_status import TaskStatus
+from boss.core.task_error import TaskError
 from boss.core.task_resolver import TaskResolver, TaskResolverMetadata
 from boss.core.task_retry import TaskRetryManager
 from boss.core.mastery_registry import MasteryRegistry, MasteryDefinition

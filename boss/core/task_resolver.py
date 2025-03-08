@@ -1,21 +1,26 @@
 """
-Task resolver abstract base class and related types.
+Task resolver abstract base class for the BOSS system.
 
-This module defines the TaskResolver abstract base class that serves as
-the foundation for all task resolvers in the BOSS system.
+This module defines the TaskResolver abstract base class that all resolvers must implement,
+as well as the TaskResolverMetadata class for storing metadata about resolvers.
 """
+
 import abc
 import time
+import asyncio
 import logging
-import traceback
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Union, Generic, cast
+from typing import Any, Dict, Generic, List, Optional, TypeVar, Union, Callable, cast
 
-from boss.core.task_models import Task, TaskResult, TaskError
+from pydantic import BaseModel, Field
+
+from boss.core.task_base import Task
+from boss.core.task_result import TaskResult
+from boss.core.task_error import TaskError
 from boss.core.task_status import TaskStatus
 
-# Type variable for the task result
-T = TypeVar('T')
+# Type variable for the return type of the resolve method
+T = TypeVar('T', bound=Dict[str, Any])
 
 logger = logging.getLogger(__name__)
 

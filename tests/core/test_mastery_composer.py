@@ -1,16 +1,19 @@
 """
-Unit tests for the MasteryComposer class.
+Tests for the MasteryComposer class.
 
-This module contains tests for the composition and execution of Masteries in various patterns
-including linear, conditional, and complex workflows.
+This module contains tests for the MasteryComposer class and related functionality.
 """
 
+import pytest
 import unittest
 import asyncio
-from typing import Dict, Any, Optional, List, Union
-from unittest.mock import Mock, MagicMock, patch
+import logging
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from boss.core.task_models import Task, TaskResult, TaskStatus
+from boss.core.task_base import Task
+from boss.core.task_result import TaskResult
+from boss.core.task_status import TaskStatus
 from boss.core.task_resolver import TaskResolver, TaskResolverMetadata
 from boss.core.mastery_composer import MasteryComposer, MasteryNode
 

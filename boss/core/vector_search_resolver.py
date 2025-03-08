@@ -1,20 +1,21 @@
 """
-VectorSearchResolver module for performing semantic search over vector embeddings.
+Vector search resolver for the BOSS system.
 
-This module provides functionality for semantic similarity search using vector
-embeddings, supporting various vector databases and embedding models.
+This module provides a resolver for performing vector search operations.
 """
 
 import logging
-import json
 import os
-import time
-from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast, Callable
-
 import numpy as np
+from typing import Any, Dict, List, Optional, Union, Tuple, Set, Callable
+from datetime import datetime
+from enum import Enum
+from pydantic import BaseModel, Field
 
-from boss.core.task_models import Task, TaskResult, TaskStatus, TaskError
+from boss.core.task_base import Task
+from boss.core.task_result import TaskResult
+from boss.core.task_status import TaskStatus
+from boss.core.task_error import TaskError
 from boss.core.task_resolver import TaskResolver, TaskResolverMetadata
 
 # Error type constants

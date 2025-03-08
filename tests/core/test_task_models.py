@@ -244,33 +244,55 @@ def test_task_result() -> None:
     
     # Create error result
     error = TaskError(task=task, message="Test error")
+    # Convert TaskError to dict for the TaskResult
+    error_dict = {
+        "type": error.error_type,
+        "message": str(error),
+        "details": error.details
+    }
     result2 = TaskResult(
         task_id=task.id,
         status=TaskStatus.ERROR,
-        error=error
+        error=error_dict
     )
     assert result2.status == TaskStatus.ERROR
     assert result2.error is not None
-    assert str(result2.error) == "Test error"
+    assert result2.error["message"] == "Test error"
     
-    # Test convenience methods
-    success_result = TaskResult.success(task, {"value": "success"})
-    assert success_result.status == TaskStatus.COMPLETED
-    assert success_result.output_data == {"value": "success"}
+    # Test helper methods
+    result3 = TaskResult.success(
+        task=task,
+        output_data={"result": 123}
+    )
+    assert result3.status == TaskStatus.COMPLETED
+    assert result3.output_data == {"result": 123}
     
-    failure_result = TaskResult.failure(task, "Failed", {"reason": "test"})
-    assert failure_result.status == TaskStatus.FAILED
-    assert failure_result.error is not None
-    assert str(failure_result.error) == "Failed"
+    result4 = TaskResult.failure(
+        task=task,
+        error_message="Something went wrong",
+        error_details={"reason": "invalid input"}
+    )
+    assert result4.status == TaskStatus.ERROR
+    assert result4.message == "Something went wrong"
+    assert result4.error is not None
+    assert result4.error["details"] == {"reason": "invalid input"}
     
     # Test serialization
-    result_dict = result1.to_dict()
-    assert result_dict["task_id"] == task.id
-    assert result_dict["status"] == "COMPLETED"
-    assert result_dict["output_data"] == {"success": True, "value": 42}
+    task_result_dict = result3.model_dump()
+    assert task_result_dict["task_id"] == task.id
+    assert task_result_dict["status"] == "COMPLETED"
+    assert task_result_dict["output_data"] == {"result": 123}
     
-    # Test deserialization
-    recreated_result = TaskResult.from_dict(result_dict)
-    assert recreated_result.task_id == task.id
-    assert recreated_result.status == TaskStatus.COMPLETED
-    assert recreated_result.output_data == {"success": True, "value": 42} 
+    # Recreate from dict - need to convert status back to enum
+    task_result_dict_copy = task_result_dict.copy()
+    # Find the right TaskStatus enum value
+    status_str = task_result_dict_copy["status"].lower()
+    for status in TaskStatus:
+        if status.value == status_str:
+            task_result_dict_copy["status"] = status
+            break
+    
+    recreated_result = TaskResult(**task_result_dict_copy)
+    assert recreated_result.task_id == result3.task_id
+    assert recreated_result.status == result3.status
+    assert recreated_result.output_data == result3.output_data 

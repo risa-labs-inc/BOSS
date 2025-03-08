@@ -8,9 +8,10 @@ import math
 import random
 from datetime import datetime
 from enum import Enum, auto
-from typing import Any, Callable, Dict, Optional, TypeVar, Union
+from typing import Any, Callable, Dict, Optional, TypeVar, Union, List
 
-from boss.core.task_models import Task, TaskResult
+from boss.core.task_base import Task
+from boss.core.task_result import TaskResult
 from boss.core.task_status import TaskStatus
 
 
